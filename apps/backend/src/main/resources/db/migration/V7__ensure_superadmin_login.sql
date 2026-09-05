@@ -6,7 +6,7 @@ INSERT INTO users (full_name, email, password_hash, role_id, active)
 VALUES (
     'Super Administrator',
     'superadmin@fittrack.app',
-    '$2b$12$SlAQmyNUht0.4S4lE4/H.OKNwhI9LH8Nfz5YhzYxKYdOKf/f3jUtu',
+    '$2b$12$ZXp/eH/B.LJz/G6z5foB3.zKCuB/gG4uTPo1Q/pYT1S2Ve7WUon5q',
     (SELECT id FROM roles WHERE name = 'SUPER_ADMIN'),
     true
 )
