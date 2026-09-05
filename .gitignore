@@ -1,0 +1,28 @@
+# Node
+apps/frontend/node_modules/
+apps/frontend/dist/
+
+# Java
+apps/backend/target/
+
+# IDE
+.idea/
+*.iml
+
+# Env
+.env
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+*.tmp
+*.swp
+*.swo
+*~

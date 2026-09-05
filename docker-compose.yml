@@ -1,0 +1,40 @@
+services:
+  database:
+    image: postgres:16
+    container_name: fittrack-db
+    environment:
+      POSTGRES_DB: fitness
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5432:5432"
+    volumes:
+      - fittrack_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./apps/backend
+    container_name: fittrack-backend
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://database:5432/fitness
+      DB_USERNAME: admin
+      DB_PASSWORD: admin
+      JWT_SECRET: ZmFrZS1kZXYtc2VjcmV0LXNob3VsZC1iZS1vdmVycmlkZGVuLWluLXByb2Q=
+      JWT_ACCESS_EXP_MIN: 30
+    depends_on:
+      - database
+    ports:
+      - "1111:1111"
+
+  frontend:
+    build:
+      context: ./apps/frontend
+    container_name: fittrack-frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  fittrack_data:

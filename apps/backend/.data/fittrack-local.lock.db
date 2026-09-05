@@ -1,0 +1,6 @@
+#FileLock
+#Sat Sep 05 08:36:22 IST 2026
+hostName=192.168.1.4
+id=1a06f87ebacddeb9e18c3eedfeec8e9e11a79272f35
+method=file
+server=192.168.1.4\:60097

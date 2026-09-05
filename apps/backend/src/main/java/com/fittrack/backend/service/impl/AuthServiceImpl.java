@@ -1,0 +1,186 @@
+package com.fittrack.backend.service.impl;
+
+import com.fittrack.backend.dto.AuthResponse;
+import com.fittrack.backend.dto.LoginRequest;
+import com.fittrack.backend.dto.RefreshTokenRequest;
+import com.fittrack.backend.dto.RegisterRequest;
+import com.fittrack.backend.dto.RequestPasswordResetRequest;
+import com.fittrack.backend.dto.ResetPasswordRequest;
+import com.fittrack.backend.dto.UserMeResponse;
+import com.fittrack.backend.entity.RefreshToken;
+import com.fittrack.backend.entity.Role;
+import com.fittrack.backend.entity.User;
+import com.fittrack.backend.entity.UserProfile;
+import com.fittrack.backend.entity.enums.RoleName;
+import com.fittrack.backend.exception.AppException;
+import com.fittrack.backend.mapper.UserMapper;
+import com.fittrack.backend.repository.RefreshTokenRepository;
+import com.fittrack.backend.repository.RoleRepository;
+import com.fittrack.backend.repository.UserProfileRepository;
+import com.fittrack.backend.repository.UserRepository;
+import com.fittrack.backend.security.JwtService;
+import com.fittrack.backend.service.AuthService;
+import jakarta.transaction.Transactional;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.Map;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+@Service
+@Transactional
+public class AuthServiceImpl implements AuthService {
+
+    private final UserRepository userRepository;
+    private final UserProfileRepository profileRepository;
+    private final RoleRepository roleRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
+
+    public AuthServiceImpl(
+            UserRepository userRepository,
+            UserProfileRepository profileRepository,
+            RoleRepository roleRepository,
+            RefreshTokenRepository refreshTokenRepository,
+            PasswordEncoder passwordEncoder,
+            AuthenticationManager authenticationManager,
+            JwtService jwtService
+    ) {
+        this.userRepository = userRepository;
+        this.profileRepository = profileRepository;
+        this.roleRepository = roleRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.authenticationManager = authenticationManager;
+        this.jwtService = jwtService;
+    }
+
+    @Override
+    public AuthResponse register(RegisterRequest request) {
+        if (userRepository.existsByEmailIgnoreCase(request.email())) {
+            throw new AppException(HttpStatus.CONFLICT, "Email is already registered");
+        }
+
+        Role userRole = roleRepository.findByName(RoleName.USER)
+                .orElseThrow(() -> new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "USER role not configured"));
+
+        User user = new User();
+        user.setFullName(request.fullName());
+        user.setEmail(request.email().toLowerCase());
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setRole(userRole);
+        user = userRepository.save(user);
+
+        UserProfile profile = new UserProfile();
+        profile.setUser(user);
+        profile.setDateOfBirth(request.dateOfBirth());
+        profile.setGender(request.gender());
+        profile.setHeightCm(request.heightCm() != null ? BigDecimal.valueOf(request.heightCm()) : null);
+        profile.setWeightKg(request.weightKg() != null ? BigDecimal.valueOf(request.weightKg()) : null);
+        profile.setFitnessLevel(request.fitnessLevel());
+        profile.setPrimaryGoal(request.goal());
+        profile.setTrainingPreference(request.trainingPreference());
+        profile.setWorkoutFrequency(request.workoutFrequency());
+        profileRepository.save(profile);
+
+        return createTokenResponse(user, profile, false);
+    }
+
+    @Override
+    public AuthResponse login(LoginRequest request) {
+        String normalizedEmail = request.email().trim().toLowerCase();
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(normalizedEmail, request.password())
+            );
+        } catch (AuthenticationException ex) {
+            throw new AppException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+        }
+
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
+                .orElseThrow(() -> new AppException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
+
+        UserProfile profile = profileRepository.findByUserId(user.getId()).orElse(null);
+        return createTokenResponse(user, profile, request.rememberSession());
+    }
+
+    @Override
+    public AuthResponse refresh(RefreshTokenRequest request) {
+        RefreshToken refreshToken = refreshTokenRepository.findByTokenAndRevokedFalse(request.refreshToken())
+                .orElseThrow(() -> new AppException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
+
+        if (refreshToken.getExpiresAt().isBefore(Instant.now()) || !jwtService.isValid(request.refreshToken())) {
+            throw new AppException(HttpStatus.UNAUTHORIZED, "Refresh token expired");
+        }
+
+        User user = refreshToken.getUser();
+        UserProfile profile = profileRepository.findByUserId(user.getId()).orElse(null);
+
+        String accessToken = jwtService.generateAccessToken(
+                user.getEmail(),
+                Map.of("role", user.getRole().getName().name())
+        );
+
+        return new AuthResponse(
+                accessToken,
+                refreshToken.getToken(),
+                "Bearer",
+                jwtService.getAccessTokenTtl().toSeconds(),
+                UserMapper.toMeResponse(user, profile)
+        );
+    }
+
+    @Override
+    public void requestPasswordReset(RequestPasswordResetRequest request) {
+        String normalizedEmail = request.email().trim().toLowerCase();
+        userRepository.findByEmailIgnoreCase(normalizedEmail)
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Email not found"));
+
+        // In a real implementation, you would:
+        // 1. Generate a reset token
+        // 2. Store it with expiration time
+        // 3. Send email with reset link
+        // For now, we just verify the user exists
+    }
+
+    @Override
+    public void resetPassword(ResetPasswordRequest request) {
+        String normalizedEmail = request.email().trim().toLowerCase();
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Email not found"));
+
+        // Validate password
+        if (request.newPassword() == null || request.newPassword().length() < 6) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Password must be at least 6 characters");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
+    }
+
+    private AuthResponse createTokenResponse(User user, UserProfile profile, boolean rememberSession) {
+        String accessToken = jwtService.generateAccessToken(
+                user.getEmail(),
+                Map.of("role", user.getRole().getName().name())
+        );
+        String refreshTokenValue = jwtService.generateRefreshToken(user.getEmail(), rememberSession);
+
+        RefreshToken refreshToken = new RefreshToken();
+        refreshToken.setUser(user);
+        refreshToken.setToken(refreshTokenValue);
+        refreshToken.setExpiresAt(jwtService.extractExpiration(refreshTokenValue));
+        refreshTokenRepository.save(refreshToken);
+
+        UserMeResponse userMe = UserMapper.toMeResponse(user, profile);
+        return new AuthResponse(accessToken, refreshTokenValue, "Bearer", jwtService.getAccessTokenTtl().toSeconds(), userMe);
+    }
+}
+
+
+

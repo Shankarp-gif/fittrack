@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: fittrack-backend
+  profiles:
+    active: dev
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+server:
+  port: 1111
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:ZmFrZS1kZXYtc2VjcmV0LXNob3VsZC1iZS1vdmVycmlkZGVuLWluLXByb2Q=}
+    access-expiration-minutes: ${JWT_ACCESS_EXP_MIN:30}
+
+logging:
+  level:
+    root: INFO
+    com.fittrack.backend: INFO
+    org.springframework.security: DEBUG
+  file:
+    path: logs
+    max-size: 10MB
+    max-history: 30
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+

@@ -1,0 +1,34 @@
+package com.fittrack.backend.mapper;
+
+import com.fittrack.backend.dto.UserMeResponse;
+import com.fittrack.backend.entity.User;
+import com.fittrack.backend.entity.UserProfile;
+import java.math.BigDecimal;
+
+public final class UserMapper {
+
+    private UserMapper() {
+    }
+
+    public static UserMeResponse toMeResponse(User user, UserProfile profile) {
+        return new UserMeResponse(
+                user.getId(),
+                user.getFullName(),
+                user.getEmail(),
+                user.getRole().getName(),
+                profile != null ? profile.getDateOfBirth() : null,
+                profile != null ? profile.getGender() : null,
+                toDouble(profile != null ? profile.getHeightCm() : null),
+                toDouble(profile != null ? profile.getWeightKg() : null),
+                profile != null ? profile.getFitnessLevel() : null,
+                profile != null ? profile.getPrimaryGoal() : null,
+                profile != null ? profile.getTrainingPreference() : null,
+                profile != null ? profile.getWorkoutFrequency() : null
+        );
+    }
+
+    private static Double toDouble(BigDecimal value) {
+        return value != null ? value.doubleValue() : null;
+    }
+}
+

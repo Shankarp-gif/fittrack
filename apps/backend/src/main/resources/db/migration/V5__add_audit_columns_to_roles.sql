@@ -1,0 +1,4 @@
+-- Add missing audit columns to roles table
+ALTER TABLE roles ADD COLUMN created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW();
+ALTER TABLE roles ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW();
+
