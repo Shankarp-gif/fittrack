@@ -15,6 +15,8 @@ public final class UserMapper {
                 user.getId(),
                 user.getFullName(),
                 user.getEmail(),
+                user.getMobile(),
+                user.getAddress(),
                 user.getRole().getName(),
                 profile != null ? profile.getDateOfBirth() : null,
                 profile != null ? profile.getGender() : null,

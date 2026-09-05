@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Users,
   TrendingUp,
@@ -10,6 +11,8 @@ import {
   CheckCircle,
   Download,
 } from 'lucide-react'
+import { api } from '../services/api'
+import { showCenteredSuccessModal } from '../components/common/CenteredSuccessModal'
 import '../styles/AdminDashboard.css'
 
 interface AdminStats {
@@ -32,63 +35,98 @@ interface RecentActivity {
 }
 
 export function AdminDashboard() {
+  const navigate = useNavigate()
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    setLoading(true)
-    setTimeout(() => {
-      const mockStats: AdminStats = {
-        totalMembers: 250,
-        activeMembers: 220,
-        expiredMembers: 30,
-        totalRevenue: 750000,
-        pendingCollections: 125000,
-        todayCheckIns: 45,
-        weeklyActiveMembers: 180,
-        monthlyGrowth: 12.5,
-      }
-
-      const mockActivities: RecentActivity[] = [
-        {
-          id: 1,
-          memberName: 'John Doe',
-          action: 'New enrollment in 30-day plan',
-          timestamp: '2 hours ago',
-          type: 'enrollment',
-        },
-        {
-          id: 2,
-          memberName: 'Jane Smith',
-          action: 'Fee payment of ₹3,999',
-          timestamp: '4 hours ago',
-          type: 'payment',
-        },
-        {
-          id: 3,
-          memberName: 'Mike Johnson',
-          action: 'Membership expired',
-          timestamp: '6 hours ago',
-          type: 'alert',
-        },
-        {
-          id: 4,
-          memberName: 'Sarah Williams',
-          action: 'Checked in at gym',
-          timestamp: '10 mins ago',
-          type: 'attendance',
-        },
-      ]
-
-      setStats(mockStats)
-      setRecentActivities(mockActivities)
-      setLoading(false)
-    }, 500)
+    fetchDashboardData()
   }, [])
 
-  const handleExportReport = () => {
-    alert('Exporting admin report...')
+  const fetchDashboardData = async () => {
+    setLoading(true)
+    try {
+      // Fetch stats from API
+      const statsResponse = await api.get('/api/admin/stats').catch(() => ({ data: null }))
+      const stats: AdminStats = statsResponse.data || {
+        totalMembers: 0,
+        activeMembers: 0,
+        expiredMembers: 0,
+        totalRevenue: 0,
+        pendingCollections: 0,
+        todayCheckIns: 0,
+        weeklyActiveMembers: 0,
+        monthlyGrowth: 0,
+      }
+
+      // Fetch recent activities from API
+      const activitiesResponse = await api.get('/api/admin/recent-activities').catch(() => ({ data: [] }))
+      const activities: RecentActivity[] = activitiesResponse.data || []
+
+      setStats(stats)
+      setRecentActivities(activities)
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
+      // Show default empty state
+      setStats({
+        totalMembers: 0,
+        activeMembers: 0,
+        expiredMembers: 0,
+        totalRevenue: 0,
+        pendingCollections: 0,
+        todayCheckIns: 0,
+        weeklyActiveMembers: 0,
+        monthlyGrowth: 0,
+      })
+      setRecentActivities([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleExportReport = async () => {
+    try {
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Generating Report',
+        message: 'Your report is being generated. Please wait...',
+        type: 'info',
+        duration: 2000,
+      })
+      // TODO: Implement actual report export functionality
+      // This would typically call an API to generate and download a report
+    } catch (error) {
+      console.error('Error exporting report:', error)
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to export report',
+        type: 'error',
+        duration: 3000,
+      })
+    }
+  }
+
+  const handleAddMember = () => {
+    navigate('/members/new')
+  }
+
+  const handleCollectFees = () => {
+    navigate('/fees')
+  }
+
+  const handleCreatePlan = () => {
+    navigate('/membership-plans')
+  }
+
+  const handleViewAnalytics = () => {
+    navigate('/reports')
+  }
+
+  const handleViewAllActivities = () => {
+    // Navigate to a full activities page if it exists, or show a modal
+    navigate('/reports')
   }
 
   const getActivityIcon = (type: string) => {
@@ -107,12 +145,12 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="admin-dashboard">
+    <div className="admin-dashboard role-dashboard-page">
       {/* Header */}
-      <div className="dashboard-header">
+      <div className="dashboard-header role-dashboard-header">
         <div>
-          <h1 className="dashboard-title">Admin Dashboard</h1>
-          <p className="dashboard-subtitle">Manage your gym operations</p>
+          <h1 className="dashboard-title role-dashboard-title">Admin Dashboard</h1>
+          <p className="dashboard-subtitle role-dashboard-subtitle">Manage your gym operations</p>
         </div>
         <button className="export-btn" onClick={handleExportReport}>
           <Download size={18} />
@@ -204,14 +242,20 @@ export function AdminDashboard() {
       {/* Charts and Activities Section */}
       <div className="dashboard-content">
         {/* Recent Activity */}
-        <div className="activity-section">
+        <div className="activity-section role-dashboard-card">
           <div className="section-header">
             <h2>Recent Activity</h2>
-            <a href="#" className="view-all">View All</a>
+            <button onClick={handleViewAllActivities} className="view-all" style={{ cursor: 'pointer' }}>
+              View All
+            </button>
           </div>
 
           {loading ? (
             <div className="loading-state">Loading activities...</div>
+          ) : recentActivities.length === 0 ? (
+            <div className="empty-state">
+              <p>No recent activities</p>
+            </div>
           ) : (
             <div className="activity-list">
               {recentActivities.map((activity) => (
@@ -231,25 +275,41 @@ export function AdminDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="quick-actions-section">
+        <div className="quick-actions-section role-dashboard-card">
           <div className="section-header">
             <h2>Quick Actions</h2>
           </div>
 
-          <div className="actions-grid">
-            <button className="action-card">
+          <div className="actions-grid role-dashboard-actions-grid">
+            <button
+              className="action-card role-dashboard-action-card"
+              onClick={handleAddMember}
+              title="Add a new member to your gym"
+            >
               <Users size={24} />
               <span>Add New Member</span>
             </button>
-            <button className="action-card">
+            <button
+              className="action-card role-dashboard-action-card"
+              onClick={handleCollectFees}
+              title="Collect fees from members"
+            >
               <DollarSign size={24} />
               <span>Collect Fees</span>
             </button>
-            <button className="action-card">
+            <button
+              className="action-card role-dashboard-action-card"
+              onClick={handleCreatePlan}
+              title="Create a new membership plan"
+            >
               <Calendar size={24} />
               <span>Create Plan</span>
             </button>
-            <button className="action-card">
+            <button
+              className="action-card role-dashboard-action-card"
+              onClick={handleViewAnalytics}
+              title="View detailed analytics and reports"
+            >
               <BarChart3 size={24} />
               <span>View Analytics</span>
             </button>
@@ -258,7 +318,7 @@ export function AdminDashboard() {
       </div>
 
       {/* Alert Section */}
-      <div className="alerts-section">
+      <div className="alerts-section role-dashboard-card">
         <div className="section-header">
           <h2>Important Alerts</h2>
         </div>

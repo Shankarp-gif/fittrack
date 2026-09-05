@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   CheckCircle,
   Calendar,
@@ -10,6 +10,7 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { api } from '../services/api'
 import '../styles/MemberDashboard.css'
 
 interface MemberStats {
@@ -38,6 +39,7 @@ interface MemberStats {
 export function MemberDashboard() {
   const { user } = useAuth()
   const [stats, setStats] = useState<MemberStats | null>(null)
+  const [showCheckInModal, setShowCheckInModal] = useState(false)
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -63,36 +65,48 @@ export function MemberDashboard() {
   ])
 
   useEffect(() => {
-    setTimeout(() => {
-      const mockStats: MemberStats = {
-        currentMembership: {
-          planName: '30 Days Monthly Plan',
-          daysRemaining: 7,
-          endDate: '2026-09-30',
-        },
-        thisMonthAttendance: {
-          days: 20,
-          percentage: 90,
-        },
-        thisMonthStats: {
-          workoutsCompleted: 20,
-          personalTrainingSessions: 4,
-          totalMinutes: 1200,
-          caloriesBurned: 4500,
-        },
-        nextFeePayment: {
-          amount: 3999,
-          dueDate: '2026-09-05',
-          status: 'PENDING',
-        },
+    if (user?.id) {
+      fetchMemberStats()
+    }
+  }, [user?.id])
+
+  const fetchMemberStats = async () => {
+    try {
+      const response = await api.get(`/api/member/${user?.id}/stats`).catch(() => ({ data: null }))
+      const stats: MemberStats = response.data || {
+        currentMembership: { planName: '', daysRemaining: 0, endDate: '' },
+        thisMonthAttendance: { days: 0, percentage: 0 },
+        thisMonthStats: { workoutsCompleted: 0, personalTrainingSessions: 0, totalMinutes: 0, caloriesBurned: 0 },
+        nextFeePayment: { amount: 0, dueDate: '', status: 'PENDING' },
       }
-      setStats(mockStats)
-    }, 500)
-  }, [])
+      setStats(stats)
+    } catch (error) {
+      console.error('Error fetching member stats:', error)
+      setStats({
+        currentMembership: { planName: '', daysRemaining: 0, endDate: '' },
+        thisMonthAttendance: { days: 0, percentage: 0 },
+        thisMonthStats: { workoutsCompleted: 0, personalTrainingSessions: 0, totalMinutes: 0, caloriesBurned: 0 },
+        nextFeePayment: { amount: 0, dueDate: '', status: 'PENDING' },
+      })
+    }
+  }
 
   const handleCheckIn = () => {
-    alert('Check-in successful! Welcome to the gym!')
+    setShowCheckInModal(true)
   }
+
+  useEffect(() => {
+    if (!showCheckInModal) return
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowCheckInModal(false)
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [showCheckInModal])
 
   const handleMarkRead = (id: number) => {
     setNotifications((prev) =>
@@ -101,12 +115,44 @@ export function MemberDashboard() {
   }
 
   return (
-    <div className="member-dashboard">
+    <div className="member-dashboard role-dashboard-page">
+      {showCheckInModal && (
+        <div
+          className="check-in-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="check-in-success-title"
+          aria-describedby="check-in-success-message"
+          onClick={() => setShowCheckInModal(false)}
+        >
+          <div className="check-in-modal-card" onClick={(event) => event.stopPropagation()}>
+            <div className="check-in-modal-content">
+              <div className="check-in-success-icon">
+                <CheckCircle size={56} />
+              </div>
+              <h2 id="check-in-success-title" className="check-in-modal-title">
+                Check-in successful!
+              </h2>
+              <p id="check-in-success-message" className="check-in-modal-subtitle">
+                Welcome to the gym!
+              </p>
+              <button
+                className="check-in-modal-close"
+                onClick={() => setShowCheckInModal(false)}
+                autoFocus
+              >
+                Great
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Welcome Section */}
-      <div className="welcome-section">
+      <div className="welcome-section role-dashboard-header">
         <div>
-          <h1 className="welcome-title">Welcome back, {user?.fullName}! 💪</h1>
-          <p className="welcome-subtitle">Track your fitness journey and stay motivated</p>
+          <h1 className="welcome-title role-dashboard-title">Welcome back, {user?.fullName}! 💪</h1>
+          <p className="welcome-subtitle role-dashboard-subtitle">Track your fitness journey and stay motivated</p>
         </div>
         <button className="check-in-btn" onClick={handleCheckIn}>
           <CheckCircle size={20} />
@@ -171,7 +217,7 @@ export function MemberDashboard() {
         <div className="left-column">
           {/* Performance Stats */}
           {stats && (
-            <div className="performance-card">
+            <div className="performance-card role-dashboard-card">
               <div className="card-header">
                 <h2>This Month Performance</h2>
                 <span className="badge">Sep 2026</span>
@@ -226,7 +272,7 @@ export function MemberDashboard() {
           )}
 
           {/* Progress Section */}
-          <div className="progress-card">
+          <div className="progress-card role-dashboard-card">
             <div className="card-header">
               <h2>Monthly Goals Progress</h2>
             </div>
@@ -271,7 +317,7 @@ export function MemberDashboard() {
         {/* Right Column - Notifications and Quick Actions */}
         <div className="right-column">
           {/* Notifications */}
-          <div className="notifications-card">
+          <div className="notifications-card role-dashboard-card">
             <div className="card-header">
               <h2>Notifications</h2>
               <span className="badge red">
@@ -292,7 +338,11 @@ export function MemberDashboard() {
                     <p>{notif.message}</p>
                   </div>
                   {!notif.read && (
-                    <button className="mark-read" onClick={() => handleMarkRead(notif.id)}>
+                    <button
+                      className="mark-read"
+                      onClick={() => handleMarkRead(notif.id)}
+                      aria-label={`Mark notification \"${notif.title}\" as read`}
+                    >
                       ×
                     </button>
                   )}
@@ -302,7 +352,7 @@ export function MemberDashboard() {
           </div>
 
           {/* Quick Actions */}
-          <div className="quick-actions-card">
+          <div className="quick-actions-card role-dashboard-card">
             <div className="card-header">
               <h2>Quick Actions</h2>
             </div>
@@ -332,7 +382,7 @@ export function MemberDashboard() {
           </div>
 
           {/* Membership Info */}
-          <div className="membership-info-card">
+          <div className="membership-info-card role-dashboard-card">
             <div className="card-header">
               <h2>Membership Info</h2>
             </div>

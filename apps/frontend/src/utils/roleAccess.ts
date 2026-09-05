@@ -8,6 +8,7 @@ import type { GymRole } from '../types/auth'
  * Role Hierarchy and Permissions
  */
 export const ROLE_HIERARCHY: Record<GymRole, number> = {
+  SUPER_ADMIN: 5,
   ADMIN: 4,
   TRAINER: 3,
   RECEPTIONIST: 2,
@@ -15,6 +16,7 @@ export const ROLE_HIERARCHY: Record<GymRole, number> = {
 }
 
 export const ROLE_LABELS: Record<GymRole, string> = {
+  SUPER_ADMIN: 'Super Admin',
   ADMIN: 'Gym Owner',
   TRAINER: 'Trainer',
   RECEPTIONIST: 'Receptionist',
@@ -22,6 +24,7 @@ export const ROLE_LABELS: Record<GymRole, string> = {
 }
 
 export const ROLE_DESCRIPTIONS: Record<GymRole, string> = {
+  SUPER_ADMIN: 'Platform-level access - Manage all gyms and system-level settings',
   ADMIN: 'Full system access - Manage all gym operations',
   TRAINER: 'Trainer account - Manage training sessions and member progress',
   RECEPTIONIST: 'Front desk staff - Handle check-ins, registrations, and fees',
@@ -33,21 +36,25 @@ export const ROLE_DESCRIPTIONS: Record<GymRole, string> = {
  * Define which roles can access which pages
  */
 export const PAGE_ACCESS: Record<string, GymRole[]> = {
-  '/dashboard': ['ADMIN', 'TRAINER', 'RECEPTIONIST', 'USER'],
-  '/admin-dashboard': ['ADMIN'],
-  '/trainer-dashboard': ['ADMIN', 'TRAINER'],
-  '/receptionist-dashboard': ['ADMIN', 'RECEPTIONIST'],
-  '/member-dashboard': ['ADMIN', 'USER'],
-  '/attendance': ['ADMIN', 'TRAINER', 'RECEPTIONIST', 'USER'],
-  '/fees': ['ADMIN', 'RECEPTIONIST'],
-  '/membership-plans': ['ADMIN', 'USER'],
-  '/members': ['ADMIN', 'TRAINER', 'RECEPTIONIST'],
-  '/trainers': ['ADMIN'],
-  '/classes': ['ADMIN', 'TRAINER', 'RECEPTIONIST'],
-  '/workouts': ['TRAINER', 'USER'],
-  '/progress': ['USER', 'TRAINER'],
-  '/user-management': ['ADMIN'],
-  '/settings': ['ADMIN', 'TRAINER', 'RECEPTIONIST', 'USER'],
+  '/dashboard': ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'RECEPTIONIST'],
+  '/superadmin-dashboard': ['SUPER_ADMIN'],
+  '/admin-dashboard': ['SUPER_ADMIN', 'ADMIN'],
+  '/trainer-dashboard': ['SUPER_ADMIN', 'ADMIN', 'TRAINER'],
+  '/receptionist-dashboard': ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'],
+  '/member-dashboard': ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'RECEPTIONIST', 'USER'],
+  '/attendance': ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'RECEPTIONIST', 'USER'],
+  '/fees': ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'],
+  '/membership-plans': ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST', 'USER'],
+  '/members': ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'RECEPTIONIST'],
+  '/members/new': ['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST'],
+  '/trainers': ['SUPER_ADMIN', 'ADMIN'],
+  '/classes': ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'RECEPTIONIST'],
+  '/reports': ['SUPER_ADMIN', 'ADMIN'],
+  '/workouts': ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'USER'],
+  '/progress': ['SUPER_ADMIN', 'ADMIN', 'USER', 'TRAINER'],
+  '/goals': ['SUPER_ADMIN', 'ADMIN', 'USER', 'TRAINER'],
+  '/user-management': ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'RECEPTIONIST'],
+  '/settings': ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'RECEPTIONIST', 'USER'],
 }
 
 /**
@@ -78,6 +85,8 @@ export function hasRoleLevel(userRole: GymRole, requiredRole: GymRole): boolean 
  */
 export function getDashboardPathForRole(role: GymRole): string {
   switch (role) {
+    case 'SUPER_ADMIN':
+      return '/superadmin-dashboard'
     case 'ADMIN':
       return '/admin-dashboard'
     case 'TRAINER':
@@ -95,13 +104,34 @@ export function getDashboardPathForRole(role: GymRole): string {
  * Get navigation items based on role
  */
 export function getNavItemsForRole(role: GymRole) {
+  if (role === 'USER') {
+    return [
+      { icon: '💪', label: 'My Dashboard', path: '/member-dashboard' },
+      { icon: '📋', label: 'Check-In', path: '/attendance' },
+      { icon: '🎫', label: 'My Membership', path: '/membership-plans' },
+      { icon: '💪', label: 'Workouts', path: '/workouts' },
+      { icon: '📊', label: 'Progress', path: '/progress' },
+      { icon: '🎯', label: 'Goals', path: '/goals' },
+    ]
+  }
+
   const baseItems = [
     { icon: '📊', label: 'Dashboard', path: getDashboardPathForRole(role) },
+    { icon: '💪', label: 'My Dashboard', path: '/member-dashboard' },
   ]
 
-  const roleSpecificItems: Record<GymRole, any[]> = {
+  const roleSpecificItems: Record<GymRole, Array<{ icon: string; label: string; path: string }>> = {
+    SUPER_ADMIN: [
+      { icon: '👥', label: 'Members', path: '/members' },
+      { icon: '💳', label: 'Fees', path: '/fees' },
+      { icon: '📋', label: 'Attendance', path: '/attendance' },
+      { icon: '🎫', label: 'Membership Plans', path: '/membership-plans' },
+      { icon: '🏋️', label: 'Trainers', path: '/trainers' },
+      { icon: '👫', label: 'Classes', path: '/classes' },
+      { icon: '👤', label: 'User Management', path: '/user-management' },
+      { icon: '📊', label: 'Reports', path: '/reports' },
+    ],
     ADMIN: [
-      { icon: '👔', label: 'Admin Dashboard', path: '/admin-dashboard' },
       { icon: '👥', label: 'Members', path: '/members' },
       { icon: '💳', label: 'Fees', path: '/fees' },
       { icon: '📋', label: 'Attendance', path: '/attendance' },
@@ -112,28 +142,21 @@ export function getNavItemsForRole(role: GymRole) {
       { icon: '📊', label: 'Reports', path: '/reports' },
     ],
     TRAINER: [
-      { icon: '🏋️', label: 'My Training', path: '/trainer-dashboard' },
       { icon: '📋', label: 'My Clients', path: '/members?filter=trainer' },
+      { icon: '👤', label: 'Team Members', path: '/user-management' },
       { icon: '💪', label: 'Workouts', path: '/workouts' },
       { icon: '📊', label: 'Progress', path: '/progress' },
       { icon: '📅', label: 'Classes', path: '/classes' },
     ],
     RECEPTIONIST: [
-      { icon: '🎫', label: 'Receptionist', path: '/receptionist-dashboard' },
       { icon: '📋', label: 'Check-In', path: '/attendance' },
+      { icon: '👤', label: 'Team Members', path: '/user-management' },
       { icon: '💳', label: 'Fee Collection', path: '/fees' },
       { icon: '👥', label: 'Members', path: '/members' },
       { icon: '🎫', label: 'Memberships', path: '/membership-plans' },
       { icon: '📝', label: 'Registration', path: '/members/new' },
     ],
-    USER: [
-      { icon: '💪', label: 'My Dashboard', path: '/member-dashboard' },
-      { icon: '📋', label: 'Check-In', path: '/attendance' },
-      { icon: '🎫', label: 'My Membership', path: '/membership-plans' },
-      { icon: '💪', label: 'Workouts', path: '/workouts' },
-      { icon: '📊', label: 'Progress', path: '/progress' },
-      { icon: '🎯', label: 'Goals', path: '/goals' },
-    ],
+    USER: [],
   }
 
   return [...baseItems, ...(roleSpecificItems[role] || [])]

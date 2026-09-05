@@ -18,3 +18,14 @@ export interface AttendanceStats {
   currentMonth: string
 }
 
+export interface AttendanceDTO {
+  id: number
+  memberId: number
+  memberName: string
+  checkInTime: string
+  checkOutTime?: string
+  attendanceDate: string
+  duration?: number
+  status: 'CHECKED_IN' | 'CHECKED_OUT'
+}
+

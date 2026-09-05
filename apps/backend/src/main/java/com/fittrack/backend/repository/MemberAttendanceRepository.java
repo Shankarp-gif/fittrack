@@ -14,6 +14,8 @@ import org.springframework.stereotype.Repository;
 public interface MemberAttendanceRepository extends JpaRepository<MemberAttendance, Long> {
     List<MemberAttendance> findByMemberIdAndAttendanceDate(Long memberId, LocalDate date);
 
+    List<MemberAttendance> findByUserIdAndAttendanceDate(Long userId, LocalDate date);
+
     Page<MemberAttendance> findByBranchIdAndAttendanceDate(Long branchId, LocalDate date, Pageable pageable);
 
     @Query("SELECT COUNT(ma) FROM MemberAttendance ma WHERE ma.branch.id = :branchId AND ma.attendanceDate = :date AND ma.checkOutTime IS NOT NULL")

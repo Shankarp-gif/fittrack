@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Users, DollarSign, Clock, LogIn, UserPlus, CreditCard } from 'lucide-react'
+import { api } from '../services/api'
 import '../styles/ReceptionistDashboard.css'
 
 interface ReceptionistStats {
@@ -33,43 +34,48 @@ export function ReceptionistDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    setLoading(true)
-    setTimeout(() => {
-      const mockStats: ReceptionistStats = {
-        todayCheckIns: 42,
-        totalMembers: 145,
-        pendingFeesCount: 12,
-        totalPendingFees: 58000,
-        newRegistrationsToday: 3,
-        newRegistrations: [
-          { id: 1, name: 'Rohit Patel', time: '9:30 AM', plan: '30-Day Monthly' },
-          { id: 2, name: 'Anjali Singh', time: '11:15 AM', plan: '90-Day Quarterly' },
-          { id: 3, name: 'Deepak Kumar', time: '2:45 PM', plan: '30-Day Monthly' },
-        ],
-        recentCheckIns: [
-          { id: 1, memberName: 'Raj Kumar', checkInTime: '6:15 AM', status: 'checked-in' },
-          { id: 2, memberName: 'Priya Sharma', checkInTime: '6:45 AM', status: 'checked-in' },
-          { id: 3, memberName: 'Amit Singh', checkInTime: '7:00 AM', status: 'checked-out' },
-          { id: 4, memberName: 'Neha Verma', checkInTime: '7:30 AM', status: 'checked-in' },
-        ],
-        pendingFees: [
-          { id: 1, memberName: 'Vishal Desai', amount: 5000, daysOverdue: 5 },
-          { id: 2, memberName: 'Pooja Singh', amount: 3999, daysOverdue: 3 },
-          { id: 3, memberName: 'Karan Patel', amount: 7500, daysOverdue: 8 },
-        ],
-      }
-      setStats(mockStats)
-      setLoading(false)
-    }, 500)
+    fetchReceptionistStats()
   }, [])
 
+  const fetchReceptionistStats = async () => {
+    setLoading(true)
+    try {
+      const response = await api.get('/api/receptionist/stats').catch(() => ({ data: null }))
+      const stats: ReceptionistStats = response.data || {
+        todayCheckIns: 0,
+        totalMembers: 0,
+        pendingFeesCount: 0,
+        totalPendingFees: 0,
+        newRegistrationsToday: 0,
+        newRegistrations: [],
+        recentCheckIns: [],
+        pendingFees: [],
+      }
+      setStats(stats)
+    } catch (error) {
+      console.error('Error fetching receptionist stats:', error)
+      setStats({
+        todayCheckIns: 0,
+        totalMembers: 0,
+        pendingFeesCount: 0,
+        totalPendingFees: 0,
+        newRegistrationsToday: 0,
+        newRegistrations: [],
+        recentCheckIns: [],
+        pendingFees: [],
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
-    <div className="receptionist-dashboard">
+    <div className="receptionist-dashboard role-dashboard-page">
       {/* Page Header */}
-      <div className="page-header">
+      <div className="page-header role-dashboard-header">
         <div>
-          <h1 className="page-title">Reception Dashboard</h1>
-          <p className="page-subtitle">Manage check-ins, registrations, and fee collection</p>
+          <h1 className="page-title role-dashboard-title">Reception Dashboard</h1>
+          <p className="page-subtitle role-dashboard-subtitle">Manage check-ins, registrations, and fee collection</p>
         </div>
       </div>
 
@@ -125,7 +131,7 @@ export function ReceptionistDashboard() {
       {/* Main Content Grid */}
       <div className="receptionist-content-grid">
         {/* New Registrations */}
-        <div className="registrations-section">
+        <div className="registrations-section role-dashboard-card">
           <div className="section-header">
             <h2>New Registrations Today</h2>
             <button className="btn-add">+ Add Member</button>
@@ -153,7 +159,7 @@ export function ReceptionistDashboard() {
         </div>
 
         {/* Recent Check-ins */}
-        <div className="checkins-section">
+        <div className="checkins-section role-dashboard-card">
           <div className="section-header">
             <h2>Recent Check-ins</h2>
             <button className="btn-checkin">Quick Check-in</button>
@@ -181,7 +187,7 @@ export function ReceptionistDashboard() {
         </div>
 
         {/* Pending Fees */}
-        <div className="fees-section">
+        <div className="fees-section role-dashboard-card">
           <div className="section-header">
             <h2>Pending Fee Collection</h2>
             <button className="btn-collect">Collect Fees</button>
@@ -210,25 +216,25 @@ export function ReceptionistDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="quick-actions-section">
+      <div className="quick-actions-section role-dashboard-card">
         <div className="section-header">
           <h2>Quick Actions</h2>
         </div>
 
-        <div className="actions-grid">
-          <button className="action-card">
+        <div className="actions-grid role-dashboard-actions-grid">
+          <button className="action-card role-dashboard-action-card">
             <UserPlus size={24} />
             <span>Register Member</span>
           </button>
-          <button className="action-card">
+          <button className="action-card role-dashboard-action-card">
             <LogIn size={24} />
             <span>Check-in Member</span>
           </button>
-          <button className="action-card">
+          <button className="action-card role-dashboard-action-card">
             <CreditCard size={24} />
             <span>Collect Payment</span>
           </button>
-          <button className="action-card">
+          <button className="action-card role-dashboard-action-card">
             <DollarSign size={24} />
             <span>Fee Report</span>
           </button>

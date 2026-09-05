@@ -1,4 +1,5 @@
 import React from 'react'
+import './Card.css'
 
 interface CardProps {
   title?: string
@@ -19,28 +20,24 @@ export function Card({
   onClick,
   highlight,
 }: CardProps) {
-  const highlightColor = {
-    success: 'border-l-4 border-green-500',
-    warning: 'border-l-4 border-yellow-500',
-    danger: 'border-l-4 border-red-500',
-    info: 'border-l-4 border-blue-500',
+  const highlightColor: Record<NonNullable<CardProps['highlight']>, string> = {
+    success: '#10b981',
+    warning: '#f59e0b',
+    danger: '#ef4444',
+    info: '#3b82f6',
   }
 
   return (
     <div
-      className={`
-        bg-[var(--surface)] border border-[var(--surface-2)] rounded-xl p-6
-        ${highlight ? highlightColor[highlight] : ''}
-        ${clickable ? 'cursor-pointer hover:border-[var(--brand)] transition-all' : ''}
-        ${className}
-      `}
+      className={`ft-card ${clickable ? 'ft-card-clickable' : ''} ${className}`}
+      style={highlight ? { borderLeft: `4px solid ${highlightColor[highlight]}` } : undefined}
       onClick={onClick}
     >
       {title && (
-        <div className="mb-4">
-          <h3 className="font-semibold text-[var(--text)]">{title}</h3>
+        <div className="ft-card-header">
+          <h3 className="ft-card-title">{title}</h3>
           {subtitle && (
-            <p className="text-sm text-[var(--muted)] mt-1">{subtitle}</p>
+            <p className="ft-card-subtitle">{subtitle}</p>
           )}
         </div>
       )}
@@ -69,17 +66,13 @@ export function StatCard({
       clickable={!!onClick}
       onClick={onClick}
       highlight={highlight as any}
-      className="text-center"
+      className="ft-stat-card"
     >
-      {icon && <div className="text-3xl mb-2">{icon}</div>}
-      <p className="text-sm text-[var(--muted)] mb-2">{label}</p>
-      <div className="text-3xl font-bold text-[var(--text)]">{value}</div>
+      {icon && <div className="ft-stat-icon">{icon}</div>}
+      <p className="ft-stat-label">{label}</p>
+      <div className="ft-stat-value">{value}</div>
       {trend && (
-        <p
-          className={`text-xs mt-2 ${
-            trend.isPositive ? 'text-green-500' : 'text-red-500'
-          }`}
-        >
+        <p className={`ft-stat-trend ${trend.isPositive ? 'ft-stat-trend-up' : 'ft-stat-trend-down'}`}>
           {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
         </p>
       )}

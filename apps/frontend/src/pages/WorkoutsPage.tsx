@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { dashboardService } from '../services/dashboardService'
+import { showCenteredSuccessModal } from '../components/common/CenteredSuccessModal'
 import type { DashboardResponse } from '../types/dashboard'
 
 export function WorkoutsPage() {
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null)
   const [error, setError] = useState('')
+  const [isStarting, setIsStarting] = useState(false)
 
   useEffect(() => {
     dashboardService
@@ -12,6 +14,46 @@ export function WorkoutsPage() {
       .then(setDashboard)
       .catch(() => setError('Could not load workouts overview.'))
   }, [])
+
+  const handleStartWorkout = async () => {
+    if (!dashboard?.todayWorkout) return
+
+    setIsStarting(true)
+    try {
+      // Call API to start workout
+      await dashboardService.startWorkout(dashboard.todayWorkout.title)
+
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Workout Started!',
+        message: `Started: ${dashboard.todayWorkout.title}`,
+        type: 'success',
+        duration: 4000,
+      })
+    } catch (err) {
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to start workout',
+        type: 'error',
+        duration: 4000,
+      })
+    } finally {
+      setIsStarting(false)
+    }
+  }
+
+  const handleViewDetails = () => {
+    if (!dashboard?.todayWorkout) return
+
+    showCenteredSuccessModal({
+      isOpen: true,
+      title: dashboard.todayWorkout.title,
+      message: `Duration: ${dashboard.todayWorkout.estimatedDurationMinutes} min | Calories: ${dashboard.todayWorkout.estimatedCalories} kcal | Difficulty: ${dashboard.todayWorkout.difficulty}`,
+      type: 'info',
+      duration: 5000,
+    })
+  }
 
   if (error) return <div className="panel error">{error}</div>
   if (!dashboard) return <div className="panel">Loading workouts...</div>
@@ -49,8 +91,17 @@ export function WorkoutsPage() {
           {dashboard.todayWorkout.estimatedCalories} kcal - {dashboard.todayWorkout.difficulty}
         </p>
         <div className="row-gap">
-          <button className="primary-btn" type="button">Start Workout</button>
-          <button className="ghost-btn" type="button">View Details</button>
+          <button
+            className="primary-btn"
+            type="button"
+            onClick={handleStartWorkout}
+            disabled={isStarting}
+          >
+            {isStarting ? 'Starting...' : 'Start Workout'}
+          </button>
+          <button className="ghost-btn" type="button" onClick={handleViewDetails}>
+            View Details
+          </button>
         </div>
       </section>
 

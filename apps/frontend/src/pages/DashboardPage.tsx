@@ -6,6 +6,7 @@ import { ActionCenter } from '../components/dashboard/ActionCenter'
 import { Card } from '../components/common/Card'
 import { showToast } from '../components/common/Toast'
 import type { DashboardResponse } from '../types/dashboard'
+import './DashboardPage.css'
 
 export function DashboardPage() {
   const navigate = useNavigate()
@@ -58,9 +59,9 @@ export function DashboardPage() {
 
   if (error) {
     return (
-      <div className="p-6">
+      <div className="dashboard-error-wrap">
         <Card title="Error" highlight="danger">
-          <p className="text-red-400">{error}</p>
+          <p className="dashboard-error-text">{error}</p>
         </Card>
       </div>
     )
@@ -125,10 +126,10 @@ export function DashboardPage() {
   ]
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Welcome to Your Gym Dashboard</h1>
-        <p className="text-[var(--muted)]">
+    <div className="dashboard-page">
+      <div className="dashboard-hero">
+        <h1 className="dashboard-hero-title">Welcome to Your Gym Dashboard</h1>
+        <p className="dashboard-hero-subtitle">
           {dashboard?.userSummary?.fullName
             ? `Good to see you, ${dashboard.userSummary.fullName}!`
             : 'Manage your gym business from here'}
@@ -141,8 +142,8 @@ export function DashboardPage() {
         onStatClick={handleStatClick}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+      <div className="dashboard-main-grid">
+        <div className="dashboard-main-primary">
           <ActionCenter
             items={mockActions}
             loading={loading}
@@ -152,26 +153,26 @@ export function DashboardPage() {
           />
         </div>
 
-        <div className="space-y-6">
+        <div className="dashboard-main-secondary">
           <Card title="Monthly Summary">
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-[var(--muted)]">New Members</span>
-                <span className="font-bold">+{mockStats.newMembersThisMonth}</span>
+            <div className="dashboard-summary-list">
+              <div className="dashboard-summary-row">
+                <span className="dashboard-summary-label">New Members</span>
+                <span className="dashboard-summary-value">+{mockStats.newMembersThisMonth}</span>
               </div>
-              <div className="flex justify-between border-t border-[var(--surface-2)] pt-3">
-                <span className="text-[var(--muted)]">Renewals</span>
-                <span className="font-bold">{mockStats.renewalsThisMonth}</span>
+              <div className="dashboard-summary-row dashboard-summary-row-separated">
+                <span className="dashboard-summary-label">Renewals</span>
+                <span className="dashboard-summary-value">{mockStats.renewalsThisMonth}</span>
               </div>
-              <div className="flex justify-between border-t border-[var(--surface-2)] pt-3">
-                <span className="text-[var(--muted)]">Total Classes</span>
-                <span className="font-bold">
+              <div className="dashboard-summary-row dashboard-summary-row-separated">
+                <span className="dashboard-summary-label">Total Classes</span>
+                <span className="dashboard-summary-value">
                   {mockStats.todaysClasses * 25}
                 </span>
               </div>
-              <div className="flex justify-between border-t border-[var(--surface-2)] pt-3">
-                <span className="text-[var(--muted)]">Attendance Rate</span>
-                <span className="font-bold text-green-400">
+              <div className="dashboard-summary-row dashboard-summary-row-separated">
+                <span className="dashboard-summary-label">Attendance Rate</span>
+                <span className="dashboard-summary-value dashboard-summary-value-positive">
                   {((mockStats.todayPresent / (mockStats.todayPresent + mockStats.todayAbsent)) * 100).toFixed(1)}%
                 </span>
               </div>
@@ -179,7 +180,7 @@ export function DashboardPage() {
           </Card>
 
           <Card title="Top Performers">
-            <div className="space-y-3">
+            <div className="dashboard-top-performers-list">
               {[
                 { name: 'Trainer: Vikram Singh', value: '32 sessions' },
                 { name: 'Class: Power Yoga', value: '85% attendance' },
@@ -187,10 +188,10 @@ export function DashboardPage() {
               ].map((item, idx) => (
                 <div
                   key={idx}
-                  className="flex justify-between text-sm border-b border-[var(--surface-2)] pb-3 last:border-0"
+                  className="dashboard-top-performer-row"
                 >
-                  <span className="text-[var(--muted)]">{item.name}</span>
-                  <span className="font-bold text-[var(--brand)]">{item.value}</span>
+                  <span className="dashboard-top-performer-name">{item.name}</span>
+                  <span className="dashboard-top-performer-value">{item.value}</span>
                 </div>
               ))}
             </div>

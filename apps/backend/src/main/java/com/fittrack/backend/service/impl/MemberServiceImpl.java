@@ -132,6 +132,8 @@ public class MemberServiceImpl implements MemberService {
     private MemberDTO toDTO(Member member) {
         return MemberDTO.builder()
             .id(member.getId())
+            .organizationId(member.getOrganization() != null ? member.getOrganization().getId() : null)
+            .branchId(member.getBranch() != null ? member.getBranch().getId() : null)
             .memberIdNumber(member.getMemberIdNumber())
             .fullName(member.getFullName())
             .email(member.getEmail())

@@ -24,6 +24,7 @@ import com.fittrack.backend.service.UserService;
 import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -104,43 +105,72 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public List<UserListResponse> getAllUsers() {
-        return userRepository.findAll()
+    public List<UserListResponse> getAllUsers(String requesterEmail) {
+        User requester = findUser(requesterEmail);
+        RoleName role = requester.getRole().getName();
+
+        List<User> scopedUsers;
+        if (role == RoleName.SUPER_ADMIN) {
+            scopedUsers = userRepository.findAll();
+        } else if (role == RoleName.ADMIN) {
+            if (requester.getOrganization() == null) {
+                return List.of();
+            }
+            scopedUsers = userRepository.findByOrganizationId(requester.getOrganization().getId());
+        } else if (role == RoleName.RECEPTIONIST) {
+            if (requester.getOrganization() == null) {
+                return List.of();
+            }
+            scopedUsers = userRepository.findByOrganizationIdAndRoleNames(
+                requester.getOrganization().getId(),
+                Set.of(RoleName.TRAINER, RoleName.USER)
+            );
+        } else if (role == RoleName.TRAINER) {
+            if (requester.getBranch() != null) {
+                scopedUsers = userRepository.findByBranchIdAndRoleName(requester.getBranch().getId(), RoleName.USER);
+            } else if (requester.getOrganization() != null) {
+                scopedUsers = userRepository.findByOrganizationIdAndRoleName(requester.getOrganization().getId(), RoleName.USER);
+            } else {
+                scopedUsers = List.of();
+            }
+        } else {
+            throw new AppException(HttpStatus.FORBIDDEN, "Not allowed to view users");
+        }
+
+        return scopedUsers
             .stream()
-            .map(user -> new UserListResponse(
-                user.getId(),
-                user.getFullName(),
-                user.getEmail(),
-                user.getRole().getName(),
-                user.isActive(),
-                user.getCreatedAt()
-            ))
+            .map(this::toUserListResponse)
             .collect(Collectors.toList());
     }
 
     @Override
-    public UserMeResponse changeUserRole(ChangeRoleRequest request) {
-        User user = userRepository.findById(request.userId())
+    public UserMeResponse changeUserRole(String requesterEmail, ChangeRoleRequest request) {
+        User requester = findUser(requesterEmail);
+        User target = userRepository.findById(request.userId())
             .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "User not found"));
+
+        validateRoleChangePermission(requester, target, request.newRole());
 
         Role role = roleRepository.findByName(request.newRole())
             .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Role not found"));
 
-        user.setRole(role);
-        userRepository.save(user);
+        target.setRole(role);
+        userRepository.save(target);
 
-        UserProfile profile = profileRepository.findByUserId(user.getId()).orElse(null);
-        return UserMapper.toMeResponse(user, profile);
+        UserProfile profile = profileRepository.findByUserId(target.getId()).orElse(null);
+        return UserMapper.toMeResponse(target, profile);
     }
 
     @Override
-    public void deleteUser(Long userId) {
-        User user = userRepository.findById(userId)
+    public void deleteUser(String requesterEmail, Long userId) {
+        User requester = findUser(requesterEmail);
+        User target = userRepository.findById(userId)
             .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "User not found"));
 
-        // Soft delete - set inactive
-        user.setActive(false);
-        userRepository.save(user);
+        validateDeletePermission(requester, target);
+
+        target.setActive(false);
+        userRepository.save(target);
     }
 
     // SuperAdmin-only methods
@@ -261,9 +291,98 @@ public class UserServiceImpl implements UserService {
         organizationRepository.save(organization);
     }
 
+    private UserListResponse toUserListResponse(User user) {
+        return new UserListResponse(
+            user.getId(),
+            user.getFullName(),
+            user.getEmail(),
+            user.getRole().getName(),
+            user.isActive(),
+            user.getCreatedAt()
+        );
+    }
+
+    private void validateRoleChangePermission(User requester, User target, RoleName newRole) {
+        if (requester.getId().equals(target.getId())) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "You cannot change your own role");
+        }
+
+        RoleName requesterRole = requester.getRole().getName();
+        RoleName targetRole = target.getRole().getName();
+
+        if (requesterRole == RoleName.SUPER_ADMIN) {
+            return;
+        }
+
+        if (requesterRole == RoleName.ADMIN) {
+            if (requester.getOrganization() == null || target.getOrganization() == null
+                || !requester.getOrganization().getId().equals(target.getOrganization().getId())) {
+                throw new AppException(HttpStatus.FORBIDDEN, "You can manage only users in your organization");
+            }
+            if (targetRole == RoleName.SUPER_ADMIN || newRole == RoleName.SUPER_ADMIN) {
+                throw new AppException(HttpStatus.FORBIDDEN, "Admin cannot assign or modify super admin role");
+            }
+            return;
+        }
+
+        throw new AppException(HttpStatus.FORBIDDEN, "You are not allowed to change roles");
+    }
+
+    private void validateDeletePermission(User requester, User target) {
+        if (requester.getId().equals(target.getId())) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "You cannot deactivate yourself");
+        }
+
+        RoleName requesterRole = requester.getRole().getName();
+        RoleName targetRole = target.getRole().getName();
+
+        if (requesterRole == RoleName.SUPER_ADMIN) {
+            return;
+        }
+
+        if (requesterRole == RoleName.ADMIN) {
+            if (requester.getOrganization() == null || target.getOrganization() == null
+                || !requester.getOrganization().getId().equals(target.getOrganization().getId())) {
+                throw new AppException(HttpStatus.FORBIDDEN, "You can manage only users in your organization");
+            }
+            if (targetRole == RoleName.SUPER_ADMIN) {
+                throw new AppException(HttpStatus.FORBIDDEN, "Admin cannot deactivate super admin");
+            }
+            return;
+        }
+
+        if (requesterRole == RoleName.RECEPTIONIST) {
+            if (requester.getOrganization() == null || target.getOrganization() == null
+                || !requester.getOrganization().getId().equals(target.getOrganization().getId())) {
+                throw new AppException(HttpStatus.FORBIDDEN, "You can manage only your organization team members");
+            }
+            if (targetRole != RoleName.USER) {
+                throw new AppException(HttpStatus.FORBIDDEN, "Receptionist can deactivate members only");
+            }
+            return;
+        }
+
+        if (requesterRole == RoleName.TRAINER) {
+            if (targetRole != RoleName.USER) {
+                throw new AppException(HttpStatus.FORBIDDEN, "Trainer can deactivate assigned members only");
+            }
+            if (requester.getBranch() != null && (target.getBranch() == null
+                || !requester.getBranch().getId().equals(target.getBranch().getId()))) {
+                throw new AppException(HttpStatus.FORBIDDEN, "You can manage only members in your branch");
+            }
+            if (requester.getBranch() == null && requester.getOrganization() != null
+                && (target.getOrganization() == null
+                || !requester.getOrganization().getId().equals(target.getOrganization().getId()))) {
+                throw new AppException(HttpStatus.FORBIDDEN, "You can manage only members in your organization");
+            }
+            return;
+        }
+
+        throw new AppException(HttpStatus.FORBIDDEN, "You are not allowed to deactivate users");
+    }
+
     private User findUser(String email) {
-        return userRepository.findByEmailIgnoreCase(email)
+        return userRepository.findWithRoleByEmailIgnoreCase(email)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "User not found"));
     }
 }
-

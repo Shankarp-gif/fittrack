@@ -1,8 +1,17 @@
-import { useState, useEffect } from 'react'
-import { LogIn, LogOut, Calendar, TrendingUp } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Calendar, LogIn, LogOut, TrendingUp } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { showCenteredSuccessModal } from '../components/common/CenteredSuccessModal'
 import type { AttendanceRecord, AttendanceStats } from '../types/attendance'
+import { attendanceService } from '../services/attendanceService'
 import '../styles/AttendancePage.css'
+
+interface TodayAttendance {
+  id: number
+  status: 'CHECKED_IN' | 'CHECKED_OUT'
+  checkInTime: string
+  checkOutTime?: string
+}
 
 export function AttendancePage() {
   const { user } = useAuth()
@@ -10,146 +19,249 @@ export function AttendancePage() {
   const [stats, setStats] = useState<AttendanceStats | null>(null)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [loading, setLoading] = useState(false)
+  const [todayAttendance, setTodayAttendance] = useState<TodayAttendance | null>(null)
+  const [isCheckingIn, setIsCheckingIn] = useState(false)
+  const [isCheckingOut, setIsCheckingOut] = useState(false)
 
-  // Simulated data - replace with actual API calls
   useEffect(() => {
-    setLoading(true)
-    setTimeout(() => {
-      const mockRecords: AttendanceRecord[] = [
-        {
-          id: 1,
-          memberId: 1,
-          memberName: 'John Doe',
-          checkInTime: '06:30 AM',
-          checkOutTime: '07:45 AM',
-          attendanceDate: selectedDate,
-          duration: 75,
-          status: 'CHECKED_OUT'
-        },
-        {
-          id: 2,
-          memberId: 2,
-          memberName: 'Jane Smith',
-          checkInTime: '07:00 AM',
-          checkOutTime: undefined,
-          attendanceDate: selectedDate,
-          status: 'CHECKED_IN'
-        }
-      ]
-
-      const mockStats: AttendanceStats = {
-        totalDays: 22,
-        presentDays: 20,
-        absentDays: 2,
-        attendancePercentage: 90.9,
-        currentMonth: 'September 2026'
-      }
-
-      setAttendanceRecords(mockRecords)
-      setStats(mockStats)
-      setLoading(false)
-    }, 500)
+    fetchAttendanceRecords()
   }, [selectedDate])
 
-  const handleCheckIn = () => {
-    alert('Check-in successful at ' + new Date().toLocaleTimeString())
+  const fetchAttendanceRecords = async () => {
+    setLoading(true)
+    try {
+      const [records, attendanceStats] = await Promise.all([
+        attendanceService.getRecordsByDate(selectedDate),
+        attendanceService.getStats(),
+      ])
+
+      setAttendanceRecords(Array.isArray(records) ? records : [])
+      setStats(
+        attendanceStats || {
+          totalDays: 0,
+          presentDays: 0,
+          absentDays: 0,
+          attendancePercentage: 0,
+          currentMonth: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        },
+      )
+    } catch (error) {
+      console.error('Error fetching attendance records:', error)
+      setAttendanceRecords([])
+      setStats({
+        totalDays: 0,
+        presentDays: 0,
+        absentDays: 0,
+        attendancePercentage: 0,
+        currentMonth: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleCheckOut = () => {
-    alert('Check-out successful at ' + new Date().toLocaleTimeString())
+  // Fetch today's attendance status on mount
+  useEffect(() => {
+    if (user?.id) {
+      fetchTodayAttendance()
+    }
+  }, [user?.id])
+
+
+  const fetchTodayAttendance = async () => {
+    try {
+      const attendance = await attendanceService.getTodayAttendance(user?.id || 0)
+      if (attendance) {
+        setTodayAttendance({
+          id: attendance.id,
+          status: attendance.status,
+          checkInTime: formatTime(attendance.checkInTime),
+          checkOutTime: attendance.checkOutTime ? formatTime(attendance.checkOutTime) : undefined,
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching today attendance:', error)
+    }
+  }
+
+  const formatTime = (dateTimeString: string): string => {
+    const date = new Date(dateTimeString)
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  }
+
+  const handleCheckIn = async () => {
+    if (!user?.id) return
+    
+    setIsCheckingIn(true)
+    try {
+      const data = await attendanceService.checkIn(user.id)
+      const checkInTime = formatTime(data.checkInTime)
+
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Checked In!',
+        message: `Successfully checked in at ${checkInTime}`,
+        type: 'success',
+        duration: 4000,
+      })
+
+      setTodayAttendance({
+        id: data.id,
+        status: 'CHECKED_IN',
+        checkInTime,
+      })
+    } catch (error) {
+      console.error('Error during check-in:', error)
+      const errorMsg = error instanceof Error ? error.message : 'Error during check-in. Please try again.'
+
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Check-in Failed',
+        message: errorMsg,
+        type: 'error',
+        duration: 4000,
+      })
+    } finally {
+      setIsCheckingIn(false)
+    }
+  }
+
+  const handleCheckOut = async () => {
+    if (!user?.id) return
+    
+    setIsCheckingOut(true)
+    try {
+      const data = await attendanceService.checkOut(user.id)
+      const checkOutTime = formatTime(data.checkOutTime || '')
+
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Checked Out!',
+        message: `Successfully checked out at ${checkOutTime}`,
+        type: 'success',
+        duration: 4000,
+      })
+
+      setTodayAttendance({
+        id: data.id,
+        status: 'CHECKED_OUT',
+        checkInTime: formatTime(data.checkInTime),
+        checkOutTime,
+      })
+    } catch (error) {
+      console.error('Error during check-out:', error)
+      const errorMsg = error instanceof Error ? error.message : 'Error during check-out. Please try again.'
+
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Check-out Failed',
+        message: errorMsg,
+        type: 'error',
+        duration: 4000,
+      })
+    } finally {
+      setIsCheckingOut(false)
+    }
   }
 
   return (
-    <div className="attendance-page">
-      {/* Page Header */}
-      <div className="page-header">
+    <div className="attendance-page role-dashboard-page">
+
+      <div className="page-header role-dashboard-header attendance-header-card role-dashboard-card">
         <div>
-          <h1 className="page-title">Attendance Management</h1>
-          <p className="page-subtitle">Track and manage gym member attendance</p>
+          <h1 className="page-title role-dashboard-title">Attendance Management</h1>
+          <p className="page-subtitle role-dashboard-subtitle">Track and manage gym member attendance</p>
+        </div>
+        {stats && <div className="attendance-month-pill">{stats.currentMonth}</div>}
+      </div>
+
+      {user?.role === 'USER' && (
+        <div className="quick-actions role-dashboard-card">
+          <div className="quick-actions-title">Quick Attendance</div>
+          <div className="quick-actions-buttons">
+            <button 
+              className={`attendance-action-btn check-in-btn ${todayAttendance?.status === 'CHECKED_IN' ? 'disabled' : ''}`}
+              onClick={handleCheckIn}
+              disabled={todayAttendance?.status === 'CHECKED_IN' || isCheckingIn}
+            >
+              <LogIn size={20} />
+              <span>{isCheckingIn ? 'Checking In...' : 'Check In'}</span>
+            </button>
+            <button 
+              className={`attendance-action-btn check-out-btn ${todayAttendance?.status !== 'CHECKED_IN' ? 'disabled' : ''}`}
+              onClick={handleCheckOut}
+              disabled={todayAttendance?.status !== 'CHECKED_IN' || isCheckingOut}
+            >
+              <LogOut size={20} />
+              <span>{isCheckingOut ? 'Checking Out...' : 'Check Out'}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="stats-grid">
+        <div className="stat-card role-dashboard-card">
+          <div className="stat-icon present">
+            <Calendar size={24} />
+          </div>
+          <div className="stat-content">
+            <h3>Total Days</h3>
+            <p className="stat-value">{stats?.totalDays ?? 0}</p>
+          </div>
+        </div>
+
+        <div className="stat-card role-dashboard-card">
+          <div className="stat-icon success">
+            <LogIn size={24} />
+          </div>
+          <div className="stat-content">
+            <h3>Present Days</h3>
+            <p className="stat-value">{stats?.presentDays ?? 0}</p>
+          </div>
+        </div>
+
+        <div className="stat-card role-dashboard-card">
+          <div className="stat-icon warning">
+            <LogOut size={24} />
+          </div>
+          <div className="stat-content">
+            <h3>Absent Days</h3>
+            <p className="stat-value">{stats?.absentDays ?? 0}</p>
+          </div>
+        </div>
+
+        <div className="stat-card role-dashboard-card">
+          <div className="stat-icon info">
+            <TrendingUp size={24} />
+          </div>
+          <div className="stat-content">
+            <h3>Attendance %</h3>
+            <p className="stat-value">{(stats?.attendancePercentage ?? 0).toFixed(1)}%</p>
+          </div>
         </div>
       </div>
 
-      {/* Quick Actions for Members */}
-      {user?.role === 'USER' && (
-        <div className="quick-actions">
-          <button className="action-btn check-in-btn" onClick={handleCheckIn}>
-            <LogIn size={20} />
-            <span>Check In</span>
-          </button>
-          <button className="action-btn check-out-btn" onClick={handleCheckOut}>
-            <LogOut size={20} />
-            <span>Check Out</span>
-          </button>
-        </div>
-      )}
-
-      {/* Stats Cards */}
-      {stats && (
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon present">
-              <Calendar size={24} />
-            </div>
-            <div className="stat-content">
-              <h3>Total Days</h3>
-              <p className="stat-value">{stats.totalDays}</p>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon success">
-              <LogIn size={24} />
-            </div>
-            <div className="stat-content">
-              <h3>Present Days</h3>
-              <p className="stat-value">{stats.presentDays}</p>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon warning">
-              <LogOut size={24} />
-            </div>
-            <div className="stat-content">
-              <h3>Absent Days</h3>
-              <p className="stat-value">{stats.absentDays}</p>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon info">
-              <TrendingUp size={24} />
-            </div>
-            <div className="stat-content">
-              <h3>Attendance %</h3>
-              <p className="stat-value">{stats.attendancePercentage.toFixed(1)}%</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Date Filter */}
-      <div className="filter-section">
-        <label>Select Date:</label>
+      <div className="filter-section role-dashboard-card">
+        <label htmlFor="attendance-date" className="filter-label">Select Date</label>
         <input
+          id="attendance-date"
           type="date"
           value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
+          onChange={(event) => setSelectedDate(event.target.value)}
           className="date-input"
         />
       </div>
 
-      {/* Attendance Table */}
-      <div className="table-container">
+      <div className="table-container role-dashboard-card">
         <table className="attendance-table">
           <thead>
             <tr>
-              <th>Member Name</th>
-              <th>Check-In Time</th>
-              <th>Check-Out Time</th>
-              <th>Duration</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th scope="col">Member Name</th>
+              <th scope="col">Check-In Time</th>
+              <th scope="col">Check-Out Time</th>
+              <th scope="col">Duration</th>
+              <th scope="col">Status</th>
+              <th scope="col">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -157,7 +269,7 @@ export function AttendancePage() {
               <tr>
                 <td colSpan={6} className="loading">Loading...</td>
               </tr>
-            ) : attendanceRecords.length === 0 ? (
+            ) : !Array.isArray(attendanceRecords) || attendanceRecords.length === 0 ? (
               <tr>
                 <td colSpan={6} className="empty">No attendance records found</td>
               </tr>
@@ -170,7 +282,7 @@ export function AttendancePage() {
                   <td>{record.duration ? `${record.duration} min` : '-'}</td>
                   <td>
                     <span className={`status-badge ${record.status.toLowerCase()}`}>
-                      {record.status}
+                      {record.status.replace('_', ' ')}
                     </span>
                   </td>
                   <td>
@@ -182,7 +294,7 @@ export function AttendancePage() {
           </tbody>
         </table>
       </div>
+
     </div>
   )
 }
-

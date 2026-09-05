@@ -9,6 +9,8 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+    repair-on-migrate: true
+    validate-on-migrate: false
 
 server:
   port: 1111

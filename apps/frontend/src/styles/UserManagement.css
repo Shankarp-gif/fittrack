@@ -162,28 +162,28 @@
 }
 
 .role-admin {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+  background: var(--error-light);
+  color: var(--status-error);
 }
 
 .role-trainer {
-  background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
+  background: var(--info-light);
+  color: var(--status-info);
 }
 
 .role-receptionist {
-  background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
+  background: var(--warning-light);
+  color: var(--status-warning);
 }
 
 .role-user {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
+  background: var(--success-light);
+  color: var(--status-success);
 }
 
 .role-default {
-  background: rgba(107, 114, 128, 0.1);
-  color: #6b7280;
+  background: rgba(156, 163, 175, 0.1);
+  color: var(--text-secondary);
 }
 
 .user-status {
@@ -199,13 +199,13 @@
 }
 
 .status-badge.active {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
+  background: var(--success-light);
+  color: var(--status-success);
 }
 
 .status-badge.inactive {
-  background: rgba(107, 114, 128, 0.1);
-  color: #6b7280;
+  background: rgba(156, 163, 175, 0.1);
+  color: var(--text-secondary);
 }
 
 .user-joined {
@@ -235,8 +235,8 @@
 }
 
 .btn-edit {
-  background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
+  background: var(--info-light);
+  color: var(--status-info);
 }
 
 .btn-edit:hover {
@@ -245,8 +245,8 @@
 }
 
 .btn-delete {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+  background: var(--error-light);
+  color: var(--status-error);
 }
 
 .btn-delete:hover {
@@ -255,8 +255,8 @@
 }
 
 .btn-save {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
+  background: var(--success-light);
+  color: var(--status-success);
 }
 
 .btn-save:hover {
@@ -265,8 +265,8 @@
 }
 
 .btn-cancel {
-  background: rgba(107, 114, 128, 0.1);
-  color: #6b7280;
+  background: rgba(156, 163, 175, 0.1);
+  color: var(--text-secondary);
 }
 
 .btn-cancel:hover {
@@ -315,6 +315,10 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--spacing-lg);
+  position: static;
+  top: auto;
+  margin-top: var(--spacing-lg);
+  clear: both;
 }
 
 .role-stat-card {
@@ -345,39 +349,39 @@
 }
 
 .role-stat-card.admin {
-  border-color: #ef4444;
-  color: #ef4444;
+  border-color: var(--status-error);
+  color: var(--status-error);
 }
 
 .role-stat-card.admin .count {
-  color: #ef4444;
+  color: var(--status-error);
 }
 
 .role-stat-card.trainer {
-  border-color: #3b82f6;
-  color: #3b82f6;
+  border-color: var(--status-info);
+  color: var(--status-info);
 }
 
 .role-stat-card.trainer .count {
-  color: #3b82f6;
+  color: var(--status-info);
 }
 
 .role-stat-card.receptionist {
-  border-color: #f59e0b;
-  color: #f59e0b;
+  border-color: var(--status-warning);
+  color: var(--status-warning);
 }
 
 .role-stat-card.receptionist .count {
-  color: #f59e0b;
+  color: var(--status-warning);
 }
 
 .role-stat-card.member {
-  border-color: #10b981;
-  color: #10b981;
+  border-color: var(--status-success);
+  color: var(--status-success);
 }
 
 .role-stat-card.member .count {
-  color: #10b981;
+  color: var(--status-success);
 }
 
 /* Responsive */
@@ -436,4 +440,3 @@
     font-size: 2rem;
   }
 }
-

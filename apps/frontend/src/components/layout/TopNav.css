@@ -1,11 +1,11 @@
-/* Top Navigation Styling */
+/* Top Navigation Styling - Modern Design */
 .topnav {
   position: fixed;
   top: 0;
-  left: var(--sidebar-width);
+  left: 280px;
   right: 0;
   height: var(--topnav-height);
-  background: var(--bg-secondary);
+  background: linear-gradient(90deg, var(--bg-secondary) 0%, rgba(17, 22, 51, 0.98) 100%);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
@@ -13,11 +13,8 @@
   padding: 0 var(--spacing-xl);
   gap: var(--spacing-xl);
   z-index: 999;
-  transition: left var(--transition-base), right var(--transition-base);
-}
-
-.topnav.collapsed {
-  left: var(--sidebar-width-collapsed);
+  transition: all var(--transition-base);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
 }
 
 /* Left Section */
@@ -32,7 +29,7 @@
   align-items: center;
   gap: var(--spacing-md);
   padding: var(--spacing-md) var(--spacing-lg);
-  background: var(--bg-tertiary);
+  background: rgba(0, 217, 255, 0.05);
   color: var(--text-tertiary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
@@ -41,8 +38,8 @@
 }
 
 .search-trigger:hover {
-  background: var(--bg-hover);
-  border-color: var(--border-color-light);
+  background: rgba(0, 217, 255, 0.1);
+  border-color: var(--accent-primary);
   color: var(--text-secondary);
 }
 
@@ -206,7 +203,7 @@
 
 @media (max-width: 768px) {
   .topnav {
-    left: var(--sidebar-width-collapsed);
+    left: 70px;
     padding: 0 var(--spacing-md);
     gap: var(--spacing-md);
   }
@@ -225,6 +222,10 @@
 }
 
 @media (max-width: 480px) {
+  .topnav {
+    left: 60px;
+  }
+
   .topnav-left {
     display: none;
   }

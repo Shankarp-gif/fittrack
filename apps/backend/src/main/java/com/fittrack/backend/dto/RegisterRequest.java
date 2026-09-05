@@ -14,6 +14,8 @@ public record RegisterRequest(
         @NotBlank @Size(max = 120) String fullName,
         @NotBlank @Email @Size(max = 180) String email,
         @NotBlank @Size(min = 8, max = 120) String password,
+        @Size(max = 20) String mobile,
+        @Size(max = 255) String address,
         @Past LocalDate dateOfBirth,
         Gender gender,
         Double heightCm,

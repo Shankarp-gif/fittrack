@@ -10,6 +10,8 @@ public record UserMeResponse(
         Long id,
         String fullName,
         String email,
+        String mobile,
+        String address,
         RoleName role,
         LocalDate dateOfBirth,
         Gender gender,

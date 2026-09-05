@@ -42,23 +42,22 @@ public class UserController {
         return userService.updateProfile(authentication.getName(), request);
     }
 
-    // Admin-only endpoints
     @GetMapping("/all")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public List<UserListResponse> getAllUsers() {
-        return userService.getAllUsers();
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','RECEPTIONIST','TRAINER')")
+    public List<UserListResponse> getAllUsers(Authentication authentication) {
+        return userService.getAllUsers(authentication.getName());
     }
 
     @PostMapping("/change-role")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public UserMeResponse changeUserRole(@Valid @RequestBody ChangeRoleRequest request) {
-        return userService.changeUserRole(request);
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','RECEPTIONIST','TRAINER')")
+    public UserMeResponse changeUserRole(Authentication authentication, @Valid @RequestBody ChangeRoleRequest request) {
+        return userService.changeUserRole(authentication.getName(), request);
     }
 
     @DeleteMapping("/{userId}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public void deleteUser(@PathVariable Long userId) {
-        userService.deleteUser(userId);
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','RECEPTIONIST','TRAINER')")
+    public void deleteUser(Authentication authentication, @PathVariable Long userId) {
+        userService.deleteUser(authentication.getName(), userId);
     }
 
     // SuperAdmin-only endpoints
@@ -74,7 +73,6 @@ public class UserController {
         return userService.assignAdminToOrganization(request);
     }
 
-    // Organization Management - SuperAdmin only
     @PostMapping("/organization/create")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public OrganizationDTO createOrganization(@Valid @RequestBody CreateOrganizationRequest request) {
@@ -108,5 +106,3 @@ public class UserController {
         userService.deactivateOrganization(organizationId);
     }
 }
-
-

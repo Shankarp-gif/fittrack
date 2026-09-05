@@ -11,6 +11,8 @@ import {
   CheckCircle,
   Loader,
 } from 'lucide-react'
+import { api } from '../services/api'
+import { showCenteredSuccessModal } from '../components/common/CenteredSuccessModal'
 import '../styles/SuperAdminDashboard.css'
 
 interface Organization {
@@ -72,61 +74,36 @@ export function SuperAdminDashboard() {
 
   const fetchData = async () => {
     setLoading(true)
-    // Simulate API call
-    setTimeout(() => {
-      const mockOrgs: Organization[] = [
-        {
-          id: 1,
-          name: 'Gold Gym - Downtown',
-          email: 'contact@goldgym.com',
-          phone: '+1-555-0100',
-          city: 'New York',
-          country: 'USA',
-          active: true,
-          createdAt: '2024-01-15',
-        },
-        {
-          id: 2,
-          name: 'Fitness Pro Center',
-          email: 'info@fitnesspro.com',
-          phone: '+1-555-0200',
-          city: 'Los Angeles',
-          country: 'USA',
-          active: true,
-          createdAt: '2024-02-10',
-        },
-      ]
+    try {
+      // Fetch organizations from API
+      const [orgsResponse, statsResponse] = await Promise.all([
+        api.get('/api/organizations').catch(() => ({ data: [] })),
+        api.get('/api/superadmin/stats').catch(() => ({ data: { totalOrganizations: 0, activeOrganizations: 0, totalAdmins: 0 } })),
+      ])
 
-      const mockAdmins: AdminUser[] = [
-        {
-          id: 5,
-          fullName: 'John Manager',
-          email: 'john@goldgym.com',
-          role: 'ADMIN',
-          organizationId: 1,
-          organizationName: 'Gold Gym - Downtown',
-          active: true,
-        },
-        {
-          id: 6,
-          fullName: 'Sarah Admin',
-          email: 'sarah@fitnesspro.com',
-          role: 'ADMIN',
-          organizationId: 2,
-          organizationName: 'Fitness Pro Center',
-          active: true,
-        },
-      ]
+      const orgs = orgsResponse.data || []
+      const stats = statsResponse.data || { totalOrganizations: 0, activeOrganizations: 0, totalAdmins: 0 }
 
-      setOrganizations(mockOrgs)
-      setAdmins(mockAdmins)
+      // Fetch admins from API
+      const adminsResponse = await api.get('/api/users/by-role/ADMIN').catch(() => ({ data: [] }))
+      const adminsData = adminsResponse.data || []
+
+      setOrganizations(orgs)
+      setAdmins(adminsData)
+      setStats(stats)
+    } catch (error) {
+      console.error('Error fetching data:', error)
+      // Show fallback empty state
+      setOrganizations([])
+      setAdmins([])
       setStats({
-        totalOrganizations: mockOrgs.length,
-        activeOrganizations: mockOrgs.filter((o) => o.active).length,
-        totalAdmins: mockAdmins.length,
+        totalOrganizations: 0,
+        activeOrganizations: 0,
+        totalAdmins: 0,
       })
+    } finally {
       setLoading(false)
-    }, 500)
+    }
   }
 
   const handleCreateClick = (type: 'organization' | 'admin') => {
@@ -179,7 +156,13 @@ export function SuperAdminDashboard() {
       }
 
       setOrganizations([...organizations, newOrg])
-      alert(`Organization "${formData.name}" created successfully!`)
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Success!',
+        message: `Organization "${formData.name}" created successfully!`,
+        type: 'success',
+        duration: 4000,
+      })
     } else {
       // Mock create admin
       if (!formData.fullName || !formData.email || !formData.password || !formData.organizationId) {
@@ -204,7 +187,13 @@ export function SuperAdminDashboard() {
       }
 
       setAdmins([...admins, newAdmin])
-      alert(`Admin "${formData.fullName}" created successfully!`)
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Success!',
+        message: `Admin "${formData.fullName}" created successfully!`,
+        type: 'success',
+        duration: 4000,
+      })
     }
 
     setShowCreateModal(false)
@@ -215,7 +204,13 @@ export function SuperAdminDashboard() {
       setOrganizations(organizations.map((org) =>
         org.id === id ? { ...org, active: false } : org
       ))
-      alert('Organization deactivated successfully')
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Deactivated!',
+        message: 'Organization deactivated successfully',
+        type: 'success',
+        duration: 4000,
+      })
     }
   }
 
@@ -224,7 +219,13 @@ export function SuperAdminDashboard() {
       setAdmins(admins.map((admin) =>
         admin.id === id ? { ...admin, active: false } : admin
       ))
-      alert('Admin deactivated successfully')
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Deactivated!',
+        message: 'Admin deactivated successfully',
+        type: 'success',
+        duration: 4000,
+      })
     }
   }
 

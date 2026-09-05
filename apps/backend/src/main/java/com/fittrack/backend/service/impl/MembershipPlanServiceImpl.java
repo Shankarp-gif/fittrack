@@ -95,17 +95,21 @@ public class MembershipPlanServiceImpl implements MembershipPlanService {
     }
 
     private MembershipPlanDTO toDTO(MembershipPlan plan) {
+        if (plan == null) {
+            return null;
+        }
+
         return MembershipPlanDTO.builder()
             .id(plan.getId())
-            .name(plan.getName())
-            .description(plan.getDescription())
-            .durationDays(plan.getDurationDays())
-            .price(plan.getPrice())
-            .joiningFee(plan.getJoiningFee())
-            .discountPercentage(plan.getDiscountPercentage())
-            .taxPercentage(plan.getTaxPercentage())
-            .maxPtSessions(plan.getMaxPtSessions())
-            .freezeAllowance(plan.getFreezeAllowance())
+            .name(plan.getName() != null ? plan.getName() : "")
+            .description(plan.getDescription() != null ? plan.getDescription() : "")
+            .durationDays(plan.getDurationDays() != null ? plan.getDurationDays() : 0)
+            .price(plan.getPrice() != null ? plan.getPrice() : 0.0)
+            .joiningFee(plan.getJoiningFee() != null ? plan.getJoiningFee() : 0.0)
+            .discountPercentage(plan.getDiscountPercentage() != null ? plan.getDiscountPercentage() : 0.0)
+            .taxPercentage(plan.getTaxPercentage() != null ? plan.getTaxPercentage() : 0.0)
+            .maxPtSessions(plan.getMaxPtSessions() != null ? plan.getMaxPtSessions() : 0)
+            .freezeAllowance(plan.getFreezeAllowance() != null ? plan.getFreezeAllowance() : 0)
             .active(plan.isActive())
             .build();
     }

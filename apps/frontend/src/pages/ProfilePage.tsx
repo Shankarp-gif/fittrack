@@ -24,6 +24,8 @@ function toOptionalNumber(value: string) {
 function toFormState(user: UserMe) {
   return {
     fullName: user.fullName ?? '',
+    mobile: user.mobile ?? '',
+    address: user.address ?? '',
     dateOfBirth: user.dateOfBirth ?? '',
     gender: user.gender ?? '',
     heightCm: user.heightCm?.toString() ?? '',
@@ -42,6 +44,8 @@ export function ProfilePage() {
   const [error, setError] = useState('')
   const [form, setForm] = useState({
     fullName: '',
+    mobile: '',
+    address: '',
     dateOfBirth: '',
     gender: '',
     heightCm: '',
@@ -70,6 +74,8 @@ export function ProfilePage() {
 
     const payload: UpdateProfileRequest = {
       fullName: form.fullName.trim() || undefined,
+      mobile: form.mobile.trim() || undefined,
+      address: form.address.trim() || undefined,
       dateOfBirth: form.dateOfBirth || undefined,
       gender: (form.gender || undefined) as Gender | undefined,
       heightCm: toOptionalNumber(form.heightCm),
@@ -111,6 +117,14 @@ export function ProfilePage() {
           <label>
             Full name
             <input className="search-input" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
+          </label>
+          <label>
+            Mobile number
+            <input className="search-input" type="tel" value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} placeholder="e.g., +1-234-567-8900" />
+          </label>
+          <label>
+            Address
+            <input className="search-input" type="text" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="e.g., 123 Main St, City, State" />
           </label>
           <label>
             Date of birth

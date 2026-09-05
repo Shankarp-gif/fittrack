@@ -1,26 +1,27 @@
-import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { TopNav } from './TopNav'
+import { CenteredSuccessModalContainer } from '../common/CenteredSuccessModal'
 import './PremiumLayout.css'
 
 export function PremiumLayout() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-
   return (
     <div className="premium-layout">
       {/* Sidebar */}
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <Sidebar />
 
       {/* Top Navigation */}
-      <TopNav collapsed={sidebarCollapsed} />
+      <TopNav />
 
       {/* Main Content */}
-      <main className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <main className="main-content">
         <div className="content-wrapper">
           <Outlet />
         </div>
       </main>
+
+      {/* Centered Success Modal Container */}
+      <CenteredSuccessModalContainer />
     </div>
   )
 }

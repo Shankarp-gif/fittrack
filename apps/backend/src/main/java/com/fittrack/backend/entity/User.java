@@ -32,6 +32,12 @@ public class User extends BaseEntity {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
+    @Column(length = 20)
+    private String mobile;
+
+    @Column(length = 255)
+    private String address;
+
     @Column(name = "active", nullable = false)
     private boolean active = true;
 

@@ -15,12 +15,12 @@ public interface UserService {
 
     UserMeResponse updateProfile(String email, UpdateProfileRequest request);
 
-    // Admin-only methods
-    List<UserListResponse> getAllUsers();
+    // Role-scoped user management methods
+    List<UserListResponse> getAllUsers(String requesterEmail);
 
-    UserMeResponse changeUserRole(ChangeRoleRequest request);
+    UserMeResponse changeUserRole(String requesterEmail, ChangeRoleRequest request);
 
-    void deleteUser(Long userId);
+    void deleteUser(String requesterEmail, Long userId);
 
     // SuperAdmin-only methods
     UserMeResponse createAdmin(CreateAdminRequest request);
@@ -37,4 +37,3 @@ public interface UserService {
 
     void deactivateOrganization(Long organizationId);
 }
-

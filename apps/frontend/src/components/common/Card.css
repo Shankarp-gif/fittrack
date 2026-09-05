@@ -1,0 +1,71 @@
+.ft-card {
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.ft-card-clickable {
+  cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.ft-card-clickable:hover {
+  border-color: var(--brand);
+  transform: translateY(-1px);
+}
+
+.ft-card-header {
+  margin-bottom: 12px;
+}
+
+.ft-card-title {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.ft-card-subtitle {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.ft-stat-card {
+  text-align: center;
+  min-height: 124px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.ft-stat-icon {
+  font-size: 24px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.ft-stat-label {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.ft-stat-value {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ft-stat-trend {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.ft-stat-trend-up {
+  color: #10b981;
+}
+
+.ft-stat-trend-down {
+  color: #ef4444;
+}
+

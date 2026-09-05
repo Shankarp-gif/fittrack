@@ -6,11 +6,14 @@ import com.fittrack.backend.dto.MembershipDTO;
 import com.fittrack.backend.dto.MembershipPlanDTO;
 import com.fittrack.backend.service.MembershipPlanService;
 import com.fittrack.backend.service.MembershipService;
+import com.fittrack.backend.util.AuthenticationContextHelper;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,17 +26,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/memberships")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST')")
 public class MembershipController {
 
     private final MembershipService membershipService;
     private final MembershipPlanService membershipPlanService;
-    private static final Long DEFAULT_ORG_ID = 1L;
+    private final AuthenticationContextHelper authContextHelper;
 
     // Membership endpoints
     @PostMapping
     public ResponseEntity<ApiResponse<MembershipDTO>> createMembership(
-        @Valid @RequestBody CreateMembershipRequest request) {
-        MembershipDTO membership = membershipService.createMembership(DEFAULT_ORG_ID, request);
+        @Valid @RequestBody CreateMembershipRequest request,
+        Authentication authentication) {
+        Long orgId = authContextHelper.getOrganizationId(authentication);
+        MembershipDTO membership = membershipService.createMembership(orgId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(ApiResponse.success("Membership created successfully", membership));
     }
@@ -59,7 +65,7 @@ public class MembershipController {
     }
 
     @GetMapping("/expiring-soon")
-    public ResponseEntity<ApiResponse<List<MembershipDTO>>> getExpiringMemberships() {
+    public ResponseEntity<ApiResponse<List<MembershipDTO>>> getExpiringMemberships(Authentication authentication) {
         List<MembershipDTO> memberships = membershipService.getExpiringMemberships(7);
         return ResponseEntity.ok(ApiResponse.success(memberships));
     }
@@ -67,15 +73,18 @@ public class MembershipController {
     // Membership Plan endpoints
     @PostMapping("/plans")
     public ResponseEntity<ApiResponse<MembershipPlanDTO>> createPlan(
-        @Valid @RequestBody MembershipPlanDTO request) {
-        MembershipPlanDTO plan = membershipPlanService.createPlan(DEFAULT_ORG_ID, request);
+        @Valid @RequestBody MembershipPlanDTO request,
+        Authentication authentication) {
+        Long orgId = authContextHelper.getOrganizationId(authentication);
+        MembershipPlanDTO plan = membershipPlanService.createPlan(orgId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(ApiResponse.success("Plan created successfully", plan));
     }
 
     @GetMapping("/plans")
-    public ResponseEntity<ApiResponse<List<MembershipPlanDTO>>> listPlans() {
-        List<MembershipPlanDTO> plans = membershipPlanService.listActivePlans(DEFAULT_ORG_ID);
+    public ResponseEntity<ApiResponse<List<MembershipPlanDTO>>> listPlans(Authentication authentication) {
+        Long orgId = authContextHelper.getOrganizationId(authentication);
+        List<MembershipPlanDTO> plans = membershipPlanService.listActivePlans(orgId);
         return ResponseEntity.ok(ApiResponse.success(plans));
     }
 

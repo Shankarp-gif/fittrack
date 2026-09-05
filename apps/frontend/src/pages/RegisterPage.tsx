@@ -13,6 +13,8 @@ export function RegisterPage() {
     fullName: '',
     email: '',
     password: '',
+    mobile: '',
+    address: '',
     fitnessLevel: 'BEGINNER' as FitnessLevel,
     goal: 'GENERAL_HEALTH' as GoalType,
   })
@@ -71,6 +73,20 @@ export function RegisterPage() {
           value={form.password}
           onChange={(e) => setForm({ ...form, password: e.target.value })}
           required
+        />
+        <label>Mobile Number (Optional)</label>
+        <input
+          type="tel"
+          value={form.mobile}
+          onChange={(e) => setForm({ ...form, mobile: e.target.value })}
+          placeholder="e.g., +1-234-567-8900"
+        />
+        <label>Address (Optional)</label>
+        <input
+          type="text"
+          value={form.address}
+          onChange={(e) => setForm({ ...form, address: e.target.value })}
+          placeholder="e.g., 123 Main St, City, State"
         />
         <label>Fitness Level</label>
         <select

@@ -4,6 +4,7 @@ import com.fittrack.backend.dto.ActivatePlanRequest;
 import com.fittrack.backend.dto.PlansResponse;
 import com.fittrack.backend.service.PlanService;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/plans")
+@PreAuthorize("isAuthenticated()")
 public class PlanController {
 
     private final PlanService planService;

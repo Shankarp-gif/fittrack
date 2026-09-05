@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { CreditCard, DollarSign, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import { api } from '../services/api'
 import type { FeeRecord, FeeCollection, PaymentTransaction } from '../types/fees'
 import '../styles/FeeCollectionPage.css'
 
@@ -14,81 +15,48 @@ export function FeeCollectionPage() {
   const [paymentAmount, setPaymentAmount] = useState('')
 
   useEffect(() => {
+    fetchFeeData()
+  }, [])
+
+  const fetchFeeData = async () => {
     setLoading(true)
-    setTimeout(() => {
-      const mockCollection: FeeCollection = {
-        totalMembers: 50,
-        paidMembers: 45,
-        pendingMembers: 5,
-        overdueFees: 2,
-        totalCollected: 225000,
-        totalPending: 25000,
-        collectionPercentage: 90
+    try {
+      const [collectionResponse, feesResponse, transactionsResponse] = await Promise.all([
+        api.get('/api/fees/collection-summary').catch(() => ({ data: null })),
+        api.get('/api/fees/records').catch(() => ({ data: [] })),
+        api.get('/api/fees/transactions').catch(() => ({ data: [] })),
+      ])
+
+      const collection: FeeCollection = collectionResponse.data || {
+        totalMembers: 0,
+        paidMembers: 0,
+        pendingMembers: 0,
+        overdueFees: 0,
+        totalCollected: 0,
+        totalPending: 0,
+        collectionPercentage: 0,
       }
 
-      const mockFees: FeeRecord[] = [
-        {
-          id: 1,
-          memberId: 1,
-          memberName: 'John Doe',
-          amount: 5000,
-          dueDate: '2026-09-01',
-          paidDate: '2026-09-01',
-          status: 'PAID',
-          paymentMode: 'UPI',
-          remarks: 'Paid on time'
-        },
-        {
-          id: 2,
-          memberId: 2,
-          memberName: 'Jane Smith',
-          amount: 5000,
-          dueDate: '2026-09-05',
-          status: 'PENDING',
-          paymentMode: undefined,
-          remarks: 'Awaiting payment'
-        },
-        {
-          id: 3,
-          memberId: 3,
-          memberName: 'Mike Johnson',
-          amount: 5000,
-          dueDate: '2026-08-25',
-          status: 'OVERDUE',
-          paymentMode: undefined,
-          remarks: '5 days overdue'
-        }
-      ]
-
-      const mockTransactions: PaymentTransaction[] = [
-        {
-          id: 1,
-          memberId: 1,
-          memberName: 'John Doe',
-          amount: 5000,
-          paymentDate: '2026-09-01',
-          paymentMode: 'UPI',
-          referenceNo: 'TXN001234567',
-          status: 'SUCCESS'
-        },
-        {
-          id: 2,
-          memberId: 4,
-          memberName: 'Sarah Williams',
-          amount: 5000,
-          paymentDate: '2026-09-04',
-          paymentMode: 'CARD',
-          referenceNo: 'TXN001234568',
-          status: 'SUCCESS'
-        }
-      ]
-
-      setFeeCollection(mockCollection)
-      setFeeRecords(mockFees)
-      setTransactions(mockTransactions)
+      setFeeCollection(collection)
+      setFeeRecords(feesResponse.data || [])
+      setTransactions(transactionsResponse.data || [])
+    } catch (error) {
+      console.error('Error fetching fee data:', error)
+      setFeeCollection({
+        totalMembers: 0,
+        paidMembers: 0,
+        pendingMembers: 0,
+        overdueFees: 0,
+        totalCollected: 0,
+        totalPending: 0,
+        collectionPercentage: 0,
+      })
+      setFeeRecords([])
+      setTransactions([])
+    } finally {
       setLoading(false)
-    }, 500)
-  }, [])
+    }
+  }
 
   const handlePayment = () => {
     if (selectedFee && paymentAmount) {

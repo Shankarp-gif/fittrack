@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Calendar, Users, Zap, Check, ArrowRight } from 'lucide-react'
+import { api } from '../services/api'
+import { showCenteredSuccessModal } from '../components/common/CenteredSuccessModal'
 import type { MembershipPlan, MembershipDetail } from '../types/fees'
 import '../styles/MembershipPage.css'
 
@@ -12,115 +14,110 @@ export function MembershipPage() {
   const [showEnrollModal, setShowEnrollModal] = useState(false)
 
   useEffect(() => {
+    fetchMembershipData()
+  }, [activeTab])
+
+  const fetchMembershipData = async () => {
     setLoading(true)
-    setTimeout(() => {
-      const mockPlans: MembershipPlan[] = [
-        {
-          id: 1,
-          name: '7 Days Starter Pack',
-          description: 'Perfect for trying out our gym facilities',
-          durationDays: 7,
-          price: 999,
-          joiningFee: 0,
-          discountPercentage: 0,
-          taxPercentage: 5,
-          maxPtSessions: 2,
-          freezeAllowance: 0,
-          active: true,
-          createdAt: '2026-01-01'
-        },
-        {
-          id: 2,
-          name: '30 Days Monthly Plan',
-          description: 'Our most popular monthly membership',
-          durationDays: 30,
-          price: 3999,
-          joiningFee: 500,
-          discountPercentage: 5,
-          taxPercentage: 5,
-          maxPtSessions: 8,
-          freezeAllowance: 1,
-          active: true,
-          createdAt: '2026-01-01'
-        },
-        {
-          id: 3,
-          name: '90 Days Quarterly Plan',
-          description: 'Get 3 months at special quarterly rates',
-          durationDays: 90,
-          price: 10499,
-          joiningFee: 500,
-          discountPercentage: 10,
-          taxPercentage: 5,
-          maxPtSessions: 24,
-          freezeAllowance: 2,
-          active: true,
-          createdAt: '2026-01-01'
-        },
-        {
-          id: 4,
-          name: '365 Days Annual Plan',
-          description: 'Best value - Full year membership with premium benefits',
-          durationDays: 365,
-          price: 35999,
-          joiningFee: 1000,
-          discountPercentage: 20,
-          taxPercentage: 5,
-          maxPtSessions: 96,
-          freezeAllowance: 4,
-          active: true,
-          createdAt: '2026-01-01'
-        }
-      ]
-
-      const mockMemberships: MembershipDetail[] = [
-        {
-          id: 1,
-          memberId: 1,
-          memberName: 'John Doe',
-          planId: 2,
-          planName: '30 Days Monthly Plan',
-          startDate: '2026-09-01',
-          endDate: '2026-09-30',
-          status: 'ACTIVE',
-          price: 3999,
-          discountAmount: 200,
-          taxAmount: 190,
-          totalAmount: 3989,
-          frozenUntil: undefined,
-          freezeCount: 0,
-          daysRemaining: 26,
-          renewalDate: '2026-09-30'
-        },
-        {
-          id: 2,
-          memberId: 2,
-          memberName: 'Jane Smith',
-          planId: 4,
-          planName: '365 Days Annual Plan',
-          startDate: '2026-06-01',
-          endDate: '2027-06-01',
-          status: 'ACTIVE',
-          price: 35999,
-          discountAmount: 7200,
-          taxAmount: 1400,
-          totalAmount: 30199,
-          frozenUntil: undefined,
-          freezeCount: 1,
-          daysRemaining: 270,
-          renewalDate: '2027-06-01'
-        }
-      ]
-
-      setPlans(mockPlans)
-      setMemberships(mockMemberships)
+    try {
+      if (activeTab === 'plans') {
+        const response = await api.get('/api/membership-plans').catch(() => ({ data: [] }))
+        setPlans(response.data || [])
+      } else {
+        const response = await api.get('/api/my-memberships').catch(() => ({ data: [] }))
+        setMemberships(response.data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching membership data:', error)
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Error Loading Data',
+        message: error instanceof Error ? error.message : 'Failed to load membership data',
+        type: 'error',
+        duration: 4000,
+      })
+    } finally {
       setLoading(false)
-    }, 500)
-  }, [])
+    }
+  }
 
   const handleEnrollClick = (plan: MembershipPlan) => {
     setSelectedPlan(plan)
     setShowEnrollModal(true)
+  }
+
+  const handleRenewMembership = async (membershipId: number) => {
+    try {
+      await api.post(`/api/memberships/${membershipId}/renew`)
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Renewed Successfully!',
+        message: 'Your membership has been renewed',
+        type: 'success',
+        duration: 4000,
+      })
+      fetchMembershipData()
+    } catch (error) {
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Renewal Failed',
+        message: error instanceof Error ? error.message : 'Failed to renew membership',
+        type: 'error',
+        duration: 4000,
+      })
+    }
+  }
+
+  const handleFreezeMembership = async (membershipId: number) => {
+    try {
+      await api.post(`/api/memberships/${membershipId}/freeze`)
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Frozen Successfully!',
+        message: 'Your membership has been frozen',
+        type: 'success',
+        duration: 4000,
+      })
+      fetchMembershipData()
+    } catch (error) {
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Freeze Failed',
+        message: error instanceof Error ? error.message : 'Failed to freeze membership',
+        type: 'error',
+        duration: 4000,
+      })
+    }
+  }
+
+  const handleProceedToPayment = async () => {
+    if (!selectedPlan) return
+
+    try {
+      await api.post('/api/memberships/enroll', {
+        planId: selectedPlan.id,
+      })
+
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Enrolled Successfully!',
+        message: `You have enrolled in ${selectedPlan.name}`,
+        type: 'success',
+        duration: 4000,
+      })
+
+      setShowEnrollModal(false)
+      setSelectedPlan(null)
+      fetchMembershipData()
+    } catch (error) {
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Enrollment Failed',
+        message: error instanceof Error ? error.message : 'Failed to enroll in membership',
+        type: 'error',
+        duration: 4000,
+      })
+    }
   }
 
   const calculateMonths = (days: number) => {
@@ -377,8 +374,16 @@ export function MembershipPage() {
 
                     {/* Action Buttons */}
                     <div className="card-actions">
-                      <button className="action-link">Renew Membership</button>
-                      <button className="action-link secondary">Freeze Membership</button>
+                      <button className="action-link" onClick={() => handleRenewMembership(membership.id)}>
+                        Renew Membership
+                      </button>
+                      <button
+                        className="action-link secondary"
+                        onClick={() => handleFreezeMembership(membership.id)}
+                        disabled={membership.freezeCount >= 1}
+                      >
+                        {membership.freezeCount >= 1 ? 'No Freezes Available' : 'Freeze Membership'}
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -429,7 +434,9 @@ export function MembershipPage() {
                 <button className="btn-cancel" onClick={() => setShowEnrollModal(false)}>
                   Cancel
                 </button>
-                <button className="btn-confirm">Proceed to Payment</button>
+                <button className="btn-confirm" onClick={handleProceedToPayment}>
+                  Proceed to Payment
+                </button>
               </div>
             </div>
           </div>

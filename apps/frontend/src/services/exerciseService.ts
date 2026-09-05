@@ -6,5 +6,15 @@ export const exerciseService = {
     const { data } = await api.get<PagedResponse<Exercise>>('/api/exercises', { params })
     return data
   },
+
+  async addToWorkout(exerciseId: number) {
+    const { data } = await api.post('/api/workouts/add-exercise', { exerciseId })
+    return data
+  },
+
+  async getDetails(exerciseId: number) {
+    const { data } = await api.get(`/api/exercises/${exerciseId}`)
+    return data
+  },
 }
 

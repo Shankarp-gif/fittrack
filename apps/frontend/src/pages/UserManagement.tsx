@@ -1,101 +1,150 @@
 import { useState, useEffect } from 'react'
 import { Users, Edit2, Trash2, Save, X } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { api } from '../services/api'
+import { showCenteredSuccessModal } from '../components/common/CenteredSuccessModal'
+import type { GymRole } from '../types/auth'
 import '../styles/UserManagement.css'
 
 interface User {
   id: number
   fullName: string
   email: string
-  role: 'ADMIN' | 'TRAINER' | 'RECEPTIONIST' | 'USER'
+  role: GymRole
   active: boolean
   createdAt: string
 }
 
 export function UserManagement() {
+  const { user: currentUser } = useAuth()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<number | null>(null)
-  const [newRole, setNewRole] = useState<string>('')
+  const [newRole, setNewRole] = useState<GymRole | ''>('')
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterRole, setFilterRole] = useState('')
+  const [filterRole, setFilterRole] = useState<GymRole | ''>('')
 
   useEffect(() => {
     fetchUsers()
-  }, [])
+  }, [currentUser?.role])
 
   const fetchUsers = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/users/all', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-        },
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setUsers(data)
-      }
-    } catch (error) {
+      const response = await api.get('/api/users/all')
+      setUsers(Array.isArray(response.data) ? response.data : [])
+    } catch (error: any) {
       console.error('Error fetching users:', error)
+      setUsers([])
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Failed to Load Users',
+        message: error?.response?.data?.message || 'Unable to fetch users with your current access.',
+        type: 'error',
+        duration: 4500,
+      })
     } finally {
       setLoading(false)
     }
+  }
+
+  const canChangeRole = (target: User) => {
+    if (!currentUser || target.id === currentUser.id) return false
+    if (currentUser.role === 'SUPER_ADMIN') return true
+    if (currentUser.role === 'ADMIN') {
+      return target.role !== 'SUPER_ADMIN'
+    }
+    return false
+  }
+
+  const canDeleteUser = (target: User) => {
+    if (!currentUser || target.id === currentUser.id) return false
+    if (currentUser.role === 'SUPER_ADMIN') return true
+    if (currentUser.role === 'ADMIN') return target.role !== 'SUPER_ADMIN'
+    if (currentUser.role === 'RECEPTIONIST') return target.role === 'USER'
+    if (currentUser.role === 'TRAINER') return target.role === 'USER'
+    return false
+  }
+
+  const getAssignableRoles = (): GymRole[] => {
+    if (!currentUser) return []
+    if (currentUser.role === 'SUPER_ADMIN') {
+      return ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'RECEPTIONIST', 'USER']
+    }
+    if (currentUser.role === 'ADMIN') {
+      return ['ADMIN', 'TRAINER', 'RECEPTIONIST', 'USER']
+    }
+    return []
   }
 
   const handleChangeRole = async (userId: number) => {
     if (!newRole) return
 
     try {
-      const response = await fetch('/api/users/change-role', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-        },
-        body: JSON.stringify({
-          userId: userId,
-          newRole: newRole,
-        }),
+      await api.post('/api/users/change-role', {
+        userId,
+        newRole,
       })
 
-      if (response.ok) {
-        fetchUsers()
-        setEditingId(null)
-        setNewRole('')
-      }
-    } catch (error) {
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Role Updated',
+        message: 'User role changed successfully.',
+        type: 'success',
+        duration: 3500,
+      })
+
+      await fetchUsers()
+      setEditingId(null)
+      setNewRole('')
+    } catch (error: any) {
       console.error('Error changing role:', error)
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Role Update Failed',
+        message: error?.response?.data?.message || 'Could not change user role.',
+        type: 'error',
+        duration: 4500,
+      })
     }
   }
 
   const handleDeleteUser = async (userId: number) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return
+    if (!window.confirm('Are you sure you want to deactivate this user?')) return
 
     try {
-      const response = await fetch(`/api/users/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+      await api.delete(`/api/users/${userId}`)
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'User Deactivated',
+        message: 'User has been deactivated successfully.',
+        type: 'success',
+        duration: 3500,
       })
-
-      if (response.ok) {
-        fetchUsers()
-      }
-    } catch (error) {
+      await fetchUsers()
+    } catch (error: any) {
       console.error('Error deleting user:', error)
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Action Not Allowed',
+        message: error?.response?.data?.message || 'Could not deactivate user.',
+        type: 'error',
+        duration: 4500,
+      })
     }
   }
 
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch = user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesRole = !filterRole || user.role === filterRole
+  const filteredUsers = users.filter((u) => {
+    const matchesSearch =
+      u.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesRole = !filterRole || u.role === filterRole
     return matchesSearch && matchesRole
   })
 
-  const getRoleColor = (role: string) => {
+  const getRoleColor = (role: GymRole) => {
     switch (role) {
+      case 'SUPER_ADMIN':
       case 'ADMIN':
         return 'role-admin'
       case 'TRAINER':
@@ -109,6 +158,9 @@ export function UserManagement() {
     }
   }
 
+  const assignableRoles = getAssignableRoles()
+  const canAnyRoleEdit = assignableRoles.length > 0
+
   return (
     <div className="user-management">
       <div className="page-header">
@@ -117,7 +169,7 @@ export function UserManagement() {
             <Users size={32} style={{ marginRight: '12px' }} />
             User Management
           </h1>
-          <p className="page-subtitle">Manage user roles and permissions</p>
+          <p className="page-subtitle">Manage users based on your role permissions</p>
         </div>
         <div className="header-stats">
           <div className="stat">
@@ -131,7 +183,6 @@ export function UserManagement() {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="filters-section">
         <input
           type="text"
@@ -142,11 +193,12 @@ export function UserManagement() {
         />
         <select
           value={filterRole}
-          onChange={(e) => setFilterRole(e.target.value)}
+          onChange={(e) => setFilterRole((e.target.value as GymRole) || '')}
           className="filter-select"
         >
           <option value="">All Roles</option>
           <option value="ADMIN">Admin</option>
+          <option value="SUPER_ADMIN">Super Admin</option>
           <option value="TRAINER">Trainer</option>
           <option value="RECEPTIONIST">Receptionist</option>
           <option value="USER">Member</option>
@@ -154,7 +206,6 @@ export function UserManagement() {
         <span className="filter-result">{filteredUsers.length} users found</span>
       </div>
 
-      {/* Users Table */}
       {loading ? (
         <div className="loading">Loading users...</div>
       ) : (
@@ -178,46 +229,46 @@ export function UserManagement() {
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((user) => (
-                  <tr key={user.id} className={`user-row ${!user.active ? 'inactive' : ''}`}>
+                filteredUsers.map((u) => (
+                  <tr key={u.id} className={`user-row ${!u.active ? 'inactive' : ''}`}>
                     <td className="user-name">
-                      <strong>{user.fullName}</strong>
+                      <strong>{u.fullName}</strong>
                     </td>
-                    <td className="user-email">{user.email}</td>
+                    <td className="user-email">{u.email}</td>
                     <td className="user-role">
-                      {editingId === user.id ? (
+                      {editingId === u.id && canAnyRoleEdit ? (
                         <select
                           value={newRole}
-                          onChange={(e) => setNewRole(e.target.value)}
+                          onChange={(e) => setNewRole((e.target.value as GymRole) || '')}
                           className="role-select-edit"
                         >
                           <option value="">Select Role</option>
-                          <option value="ADMIN">Admin</option>
-                          <option value="TRAINER">Trainer</option>
-                          <option value="RECEPTIONIST">Receptionist</option>
-                          <option value="USER">Member</option>
+                          {assignableRoles.map((role) => (
+                            <option key={role} value={role}>
+                              {role === 'USER' ? 'Member' : role === 'SUPER_ADMIN' ? 'Super Admin' : role}
+                            </option>
+                          ))}
                         </select>
                       ) : (
-                        <span className={`role-badge ${getRoleColor(user.role)}`}>
-                          {user.role === 'USER' ? 'Member' : user.role}
+                        <span className={`role-badge ${getRoleColor(u.role)}`}>
+                          {u.role === 'USER' ? 'Member' : u.role === 'SUPER_ADMIN' ? 'Super Admin' : u.role}
                         </span>
                       )}
                     </td>
                     <td className="user-status">
-                      <span className={`status-badge ${user.active ? 'active' : 'inactive'}`}>
-                        {user.active ? '✓ Active' : '✗ Inactive'}
+                      <span className={`status-badge ${u.active ? 'active' : 'inactive'}`}>
+                        {u.active ? '✓ Active' : '✗ Inactive'}
                       </span>
                     </td>
-                    <td className="user-joined">
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </td>
+                    <td className="user-joined">{new Date(u.createdAt).toLocaleDateString()}</td>
                     <td className="user-actions">
-                      {editingId === user.id ? (
+                      {editingId === u.id ? (
                         <>
                           <button
                             className="btn-save"
-                            onClick={() => handleChangeRole(user.id)}
+                            onClick={() => handleChangeRole(u.id)}
                             title="Save"
+                            disabled={!canChangeRole(u)}
                           >
                             <Save size={16} />
                           </button>
@@ -237,17 +288,19 @@ export function UserManagement() {
                           <button
                             className="btn-edit"
                             onClick={() => {
-                              setEditingId(user.id)
-                              setNewRole(user.role)
+                              setEditingId(u.id)
+                              setNewRole(u.role)
                             }}
                             title="Edit Role"
+                            disabled={!canChangeRole(u)}
                           >
                             <Edit2 size={16} />
                           </button>
                           <button
                             className="btn-delete"
-                            onClick={() => handleDeleteUser(user.id)}
-                            title="Delete"
+                            onClick={() => handleDeleteUser(u.id)}
+                            title="Deactivate"
+                            disabled={!canDeleteUser(u)}
                           >
                             <Trash2 size={16} />
                           </button>
@@ -262,8 +315,11 @@ export function UserManagement() {
         </div>
       )}
 
-      {/* Stats by Role */}
       <div className="role-stats">
+        <div className="role-stat-card admin">
+          <h3>Super Admins</h3>
+          <p className="count">{users.filter((u) => u.role === 'SUPER_ADMIN').length}</p>
+        </div>
         <div className="role-stat-card admin">
           <h3>Admins</h3>
           <p className="count">{users.filter((u) => u.role === 'ADMIN').length}</p>
@@ -284,4 +340,3 @@ export function UserManagement() {
     </div>
   )
 }
-

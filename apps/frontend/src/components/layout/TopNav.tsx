@@ -6,7 +6,7 @@ import { Modal } from '../common/Modal'
 import { logger } from '../../utils/Logger'
 import './TopNav.css'
 
-export function TopNav({ collapsed }: { collapsed: boolean }) {
+export function TopNav() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { setTheme, resolvedTheme } = useTheme()
@@ -40,7 +40,7 @@ export function TopNav({ collapsed }: { collapsed: boolean }) {
 
   return (
     <>
-      <div className={`topnav ${collapsed ? 'collapsed' : ''}`}>
+      <div className="topnav">
         {/* Left Section - Search */}
         <div className="topnav-left">
           {searchOpen ? (

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Users, Award, Zap, TrendingUp, Calendar, Clock } from 'lucide-react'
+import { api } from '../services/api'
 import '../styles/TrainerDashboard.css'
 
 interface TrainerStats {
@@ -25,40 +26,44 @@ export function TrainerDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    setLoading(true)
-    setTimeout(() => {
-      const mockStats: TrainerStats = {
-        myClients: 12,
-        activeSessions: 3,
-        totalSessionsThisMonth: 28,
-        clientsProgress: {
-          improved: 8,
-          onTrack: 3,
-          needsHelp: 1,
-        },
-        upcomingSessions: [
-          { id: 1, clientName: 'Raj Kumar', time: '10:00 AM', type: 'Strength Training' },
-          { id: 2, clientName: 'Priya Sharma', time: '11:30 AM', type: 'Cardio' },
-          { id: 3, clientName: 'Amit Singh', time: '2:00 PM', type: 'Personal Training' },
-        ],
-        topClients: [
-          { name: 'Raj Kumar', progress: 85, goal: 'Build Muscle' },
-          { name: 'Priya Sharma', progress: 72, goal: 'Lose Weight' },
-          { name: 'Neha Verma', progress: 90, goal: 'Strength' },
-        ],
-      }
-      setStats(mockStats)
-      setLoading(false)
-    }, 500)
+    fetchTrainerStats()
   }, [])
 
+  const fetchTrainerStats = async () => {
+    setLoading(true)
+    try {
+      const response = await api.get('/api/trainer/stats').catch(() => ({ data: null }))
+      const stats: TrainerStats = response.data || {
+        myClients: 0,
+        activeSessions: 0,
+        totalSessionsThisMonth: 0,
+        clientsProgress: { improved: 0, onTrack: 0, needsHelp: 0 },
+        upcomingSessions: [],
+        topClients: [],
+      }
+      setStats(stats)
+    } catch (error) {
+      console.error('Error fetching trainer stats:', error)
+      setStats({
+        myClients: 0,
+        activeSessions: 0,
+        totalSessionsThisMonth: 0,
+        clientsProgress: { improved: 0, onTrack: 0, needsHelp: 0 },
+        upcomingSessions: [],
+        topClients: [],
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
-    <div className="trainer-dashboard">
+    <div className="trainer-dashboard role-dashboard-page">
       {/* Page Header */}
-      <div className="page-header">
+      <div className="page-header role-dashboard-header">
         <div>
-          <h1 className="page-title">Trainer Dashboard</h1>
-          <p className="page-subtitle">Manage your clients and training sessions</p>
+          <h1 className="page-title role-dashboard-title">Trainer Dashboard</h1>
+          <p className="page-subtitle role-dashboard-subtitle">Manage your clients and training sessions</p>
         </div>
       </div>
 
@@ -114,7 +119,7 @@ export function TrainerDashboard() {
       {/* Main Content */}
       <div className="trainer-content-grid">
         {/* Upcoming Sessions */}
-        <div className="sessions-section">
+        <div className="sessions-section role-dashboard-card">
           <div className="section-header">
             <h2>Upcoming Sessions Today</h2>
           </div>
@@ -141,7 +146,7 @@ export function TrainerDashboard() {
         </div>
 
         {/* Client Progress */}
-        <div className="progress-section">
+        <div className="progress-section role-dashboard-card">
           <div className="section-header">
             <h2>Client Progress Summary</h2>
           </div>
@@ -182,7 +187,7 @@ export function TrainerDashboard() {
         </div>
 
         {/* Top Clients */}
-        <div className="top-clients-section">
+        <div className="top-clients-section role-dashboard-card">
           <div className="section-header">
             <h2>Top Performing Clients</h2>
           </div>
@@ -212,25 +217,25 @@ export function TrainerDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="quick-actions-section">
+      <div className="quick-actions-section role-dashboard-card">
         <div className="section-header">
           <h2>Quick Actions</h2>
         </div>
 
-        <div className="actions-grid">
-          <button className="action-card">
+        <div className="actions-grid role-dashboard-actions-grid">
+          <button className="action-card role-dashboard-action-card">
             <Users size={24} />
             <span>Add New Client</span>
           </button>
-          <button className="action-card">
+          <button className="action-card role-dashboard-action-card">
             <Calendar size={24} />
             <span>Schedule Session</span>
           </button>
-          <button className="action-card">
+          <button className="action-card role-dashboard-action-card">
             <TrendingUp size={24} />
             <span>Update Progress</span>
           </button>
-          <button className="action-card">
+          <button className="action-card role-dashboard-action-card">
             <Award size={24} />
             <span>Create Workout Plan</span>
           </button>

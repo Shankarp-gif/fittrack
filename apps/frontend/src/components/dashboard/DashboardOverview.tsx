@@ -1,5 +1,6 @@
 import { StatCard } from '../common/Card'
 import { EmptyState, LoadingState } from '../common/StateComponents'
+import './DashboardOverview.css'
 
 interface DashboardStats {
   totalMembers: number
@@ -45,11 +46,11 @@ export function DashboardOverview({
     )
 
   return (
-    <div className="space-y-8">
+    <div className="dashboard-overview">
       {/* Member Statistics */}
-      <div>
-        <h2 className="text-xl font-bold mb-4">Member Overview</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="dashboard-section">
+        <h2 className="dashboard-section-title">Member Overview</h2>
+        <div className="dashboard-stats-grid dashboard-stats-grid-five">
           <StatCard
             label="Total Members"
             value={stats.totalMembers}
@@ -87,9 +88,9 @@ export function DashboardOverview({
       </div>
 
       {/* Attendance Statistics */}
-      <div>
-        <h2 className="text-xl font-bold mb-4">Today's Attendance</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="dashboard-section">
+        <h2 className="dashboard-section-title">Today's Attendance</h2>
+        <div className="dashboard-stats-grid dashboard-stats-grid-four">
           <StatCard
             label="Total Check-ins"
             value={stats.todayAttendance}
@@ -117,9 +118,9 @@ export function DashboardOverview({
       </div>
 
       {/* Financial Statistics */}
-      <div>
-        <h2 className="text-xl font-bold mb-4">Financial Overview</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="dashboard-section">
+        <h2 className="dashboard-section-title">Financial Overview</h2>
+        <div className="dashboard-stats-grid dashboard-stats-grid-five">
           <StatCard
             label="Today's Collection"
             value={`₹${stats.todayCollection.toLocaleString()}`}
@@ -154,9 +155,9 @@ export function DashboardOverview({
       </div>
 
       {/* Staff & Operations */}
-      <div>
-        <h2 className="text-xl font-bold mb-4">Operations</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="dashboard-section">
+        <h2 className="dashboard-section-title">Operations</h2>
+        <div className="dashboard-stats-grid dashboard-stats-grid-four">
           <StatCard
             label="Active Trainers"
             value={stats.activeTrainers}
@@ -184,9 +185,9 @@ export function DashboardOverview({
       </div>
 
       {/* Quick Actions */}
-      <div>
-        <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+      <div className="dashboard-section">
+        <h2 className="dashboard-section-title">Quick Actions</h2>
+        <div className="quick-actions-grid">
           {[
             { icon: '➕', label: 'Add Member', action: 'add-member' },
             { icon: '💳', label: 'Record Payment', action: 'payment' },
@@ -200,12 +201,10 @@ export function DashboardOverview({
             <button
               key={action.action}
               onClick={() => onStatClick?.(action.action)}
-              className="flex flex-col items-center gap-1 p-3 rounded-lg bg-[var(--surface-2)] hover:bg-[var(--brand)]/20 transition-colors"
+              className="quick-action-button"
             >
-              <span className="text-xl">{action.icon}</span>
-              <span className="text-xs text-center text-[var(--muted)]">
-                {action.label}
-              </span>
+              <span className="quick-action-icon">{action.icon}</span>
+              <span className="quick-action-label">{action.label}</span>
             </button>
           ))}
         </div>
