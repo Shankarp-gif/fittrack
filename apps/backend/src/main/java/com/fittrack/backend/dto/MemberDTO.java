@@ -15,7 +15,9 @@ import lombok.NoArgsConstructor;
 public class MemberDTO {
     private Long id;
     private Long organizationId;  // For multi-tenant authorization
+    private String organizationName;
     private Long branchId;        // For multi-tenant authorization
+    private String branchName;
     private String memberIdNumber;
     private String fullName;
     private String email;

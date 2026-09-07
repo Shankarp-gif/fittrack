@@ -1,26 +1,65 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { dashboardService } from '../services/dashboardService'
+import { notificationsService } from '../services/notificationsService'
 import { DashboardOverview } from '../components/dashboard/DashboardOverview'
 import { ActionCenter } from '../components/dashboard/ActionCenter'
 import { Card } from '../components/common/Card'
 import { showToast } from '../components/common/Toast'
 import type { DashboardResponse } from '../types/dashboard'
+import type { AppNotificationItem } from '../types/notifications'
+import { useAuth } from '../context/AuthContext'
 import './DashboardPage.css'
+
+const inferNotificationType = (notification: AppNotificationItem) => {
+  const text = `${notification.title} ${notification.message}`.toLowerCase()
+
+  if (text.includes('membership') || text.includes('renew') || text.includes('expiry') || text.includes('expir')) {
+    return 'membership' as const
+  }
+  if (text.includes('payment') || text.includes('fee') || text.includes('invoice')) {
+    return 'payment' as const
+  }
+  if (text.includes('class') || text.includes('session')) {
+    return 'class' as const
+  }
+  if (text.includes('lead')) {
+    return 'lead' as const
+  }
+
+  return 'attendance' as const
+}
+
+const actionRouteByType = {
+  membership: '/membership-plans',
+  payment: '/fees',
+  lead: '/members',
+  attendance: '/attendance',
+  class: '/plans',
+} as const
 
 export function DashboardPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null)
+  const [notifications, setNotifications] = useState<AppNotificationItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    dashboardService
-      .getDashboard()
-      .then(setDashboard)
-      .catch((err) => {
-        setError('Could not load dashboard data.')
-        console.error(err)
+    Promise.allSettled([dashboardService.getDashboard(), notificationsService.list()])
+      .then(([dashboardResult, notificationsResult]) => {
+        if (dashboardResult.status === 'fulfilled') {
+          setDashboard(dashboardResult.value)
+        } else {
+          setError('Could not load dashboard data.')
+        }
+
+        if (notificationsResult.status === 'fulfilled') {
+          setNotifications(notificationsResult.value)
+        } else {
+          setNotifications([])
+        }
       })
       .finally(() => setLoading(false))
   }, [])
@@ -28,23 +67,16 @@ export function DashboardPage() {
   const handleStatClick = (stat: string) => {
     const routes: Record<string, string> = {
       members: '/members',
-      active: '/members?status=active',
-      new: '/members?status=new',
-      expiring: '/memberships?status=expiring',
-      expired: '/memberships?status=expired',
+      active: '/members?status=ACTIVE',
+      new: '/members',
+      expiring: '/membership-plans',
+      expired: '/membership-plans',
       attendance: '/attendance',
-      payments: '/payments',
-      pending: '/payments?status=pending',
-      trainers: '/trainers',
-      classes: '/classes',
-      leads: '/leads',
-      'add-member': '/members/new',
-      payment: '/payments/new',
-      membership: '/memberships/new',
-      lead: '/leads/new',
-      expense: '/expenses/new',
-      class: '/classes/new',
-      workout: '/workouts/new',
+      payments: '/fees',
+      pending: '/fees',
+      trainers: '/user-management',
+      classes: '/plans',
+      leads: '/members',
     }
 
     if (routes[stat]) {
@@ -67,63 +99,36 @@ export function DashboardPage() {
     )
   }
 
-  // For now, show enhanced dashboard with mock stats
-  const mockStats = {
-    totalMembers: 145,
-    activeMembers: 132,
-    newMembersThisMonth: 12,
-    expiringMemberships: 8,
-    expiredMemberships: 5,
-    todayAttendance: 48,
-    todayPresent: 45,
-    todayAbsent: 3,
-    avgDailyAttendance: 42.5,
-    pendingPayments: 15000,
-    todayCollection: 8500,
-    monthlyRevenue: 187500,
-    monthlyExpenses: 45000,
-    netRevenue: 142500,
-    activeTrainers: 8,
-    todaysClasses: 6,
-    newLeads: 3,
-    leadConversionRate: 32.5,
-    renewalsThisMonth: 6,
+  const derivedStats = {
+    totalMembers: 0,
+    activeMembers: 0,
+    newMembersThisMonth: 0,
+    expiringMemberships: 0,
+    expiredMemberships: 0,
+    todayAttendance: dashboard?.weeklyStats.weeklyWorkouts ?? 0,
+    todayPresent: dashboard?.weeklyStats.weeklyWorkouts ?? 0,
+    todayAbsent: 0,
+    avgDailyAttendance: dashboard ? dashboard.weeklyStats.weeklyWorkouts / 7 : 0,
+    pendingPayments: 0,
+    todayCollection: 0,
+    monthlyRevenue: 0,
+    monthlyExpenses: 0,
+    netRevenue: 0,
+    activeTrainers: user?.role === 'TRAINER' ? 1 : 0,
+    todaysClasses: 0,
+    newLeads: 0,
+    leadConversionRate: 0,
+    renewalsThisMonth: 0,
   }
 
-  const mockActions = [
-    {
-      id: '1',
-      type: 'membership' as const,
-      title: 'Membership Expiring Today',
-      description: 'Raj Kumar - Premium Plan expiring in 2 hours',
-      timestamp: '2 hours ago',
-      urgent: true,
-    },
-    {
-      id: '2',
-      type: 'payment' as const,
-      title: 'Pending Payment',
-      description: 'Priya Sharma - ₹5,000 due',
-      timestamp: '3 hours ago',
-      urgent: false,
-    },
-    {
-      id: '3',
-      type: 'lead' as const,
-      title: 'New Lead Inquiry',
-      description: 'Amit Singh - Interested in 3-month plan',
-      timestamp: 'Today',
-      urgent: false,
-    },
-    {
-      id: '4',
-      type: 'class' as const,
-      title: 'Yoga Class at 6 PM',
-      description: 'Instructor: Neha Verma, Capacity: 25/25',
-      timestamp: 'Later today',
-      urgent: false,
-    },
-  ]
+  const actionItems = notifications.slice(0, 6).map((notification) => ({
+    id: String(notification.id),
+    type: inferNotificationType(notification),
+    title: notification.title,
+    description: notification.message,
+    timestamp: new Date(notification.createdAt).toLocaleString(),
+    urgent: !notification.read,
+  }))
 
   return (
     <div className="dashboard-page">
@@ -137,19 +142,32 @@ export function DashboardPage() {
       </div>
 
       <DashboardOverview
-        stats={mockStats}
+        role={user?.role ?? 'ADMIN'}
+        stats={derivedStats}
         loading={loading}
         onStatClick={handleStatClick}
+        onQuickActionClick={(path) => navigate(path)}
       />
 
       <div className="dashboard-main-grid">
         <div className="dashboard-main-primary">
           <ActionCenter
-            items={mockActions}
+            items={actionItems}
             loading={loading}
-            onActionClick={(item) =>
-              showToast({ message: `Clicked: ${item.title}`, type: 'info' })
-            }
+            onActionClick={async (item) => {
+              const notificationId = Number(item.id)
+              try {
+                if (Number.isFinite(notificationId)) {
+                  await notificationsService.markAsRead(notificationId)
+                  setNotifications((current) =>
+                    current.map((n) => (n.id === notificationId ? { ...n, read: true } : n)),
+                  )
+                }
+                navigate(actionRouteByType[item.type])
+              } catch {
+                showToast({ message: 'Unable to update notification.', type: 'error' })
+              }
+            }}
           />
         </div>
 
@@ -158,22 +176,22 @@ export function DashboardPage() {
             <div className="dashboard-summary-list">
               <div className="dashboard-summary-row">
                 <span className="dashboard-summary-label">New Members</span>
-                <span className="dashboard-summary-value">+{mockStats.newMembersThisMonth}</span>
+                <span className="dashboard-summary-value">+{derivedStats.newMembersThisMonth}</span>
               </div>
               <div className="dashboard-summary-row dashboard-summary-row-separated">
                 <span className="dashboard-summary-label">Renewals</span>
-                <span className="dashboard-summary-value">{mockStats.renewalsThisMonth}</span>
+                <span className="dashboard-summary-value">{derivedStats.renewalsThisMonth}</span>
               </div>
               <div className="dashboard-summary-row dashboard-summary-row-separated">
                 <span className="dashboard-summary-label">Total Classes</span>
                 <span className="dashboard-summary-value">
-                  {mockStats.todaysClasses * 25}
+                  {derivedStats.todaysClasses * 25}
                 </span>
               </div>
               <div className="dashboard-summary-row dashboard-summary-row-separated">
                 <span className="dashboard-summary-label">Attendance Rate</span>
                 <span className="dashboard-summary-value dashboard-summary-value-positive">
-                  {((mockStats.todayPresent / (mockStats.todayPresent + mockStats.todayAbsent)) * 100).toFixed(1)}%
+                  {((derivedStats.todayPresent / Math.max(1, derivedStats.todayPresent + derivedStats.todayAbsent)) * 100).toFixed(1)}%
                 </span>
               </div>
             </div>

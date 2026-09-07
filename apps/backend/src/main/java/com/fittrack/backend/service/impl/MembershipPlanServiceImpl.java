@@ -7,6 +7,7 @@ import com.fittrack.backend.exception.ResourceNotFoundException;
 import com.fittrack.backend.repository.MembershipPlanRepository;
 import com.fittrack.backend.repository.OrganizationRepository;
 import com.fittrack.backend.service.MembershipPlanService;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -104,10 +105,10 @@ public class MembershipPlanServiceImpl implements MembershipPlanService {
             .name(plan.getName() != null ? plan.getName() : "")
             .description(plan.getDescription() != null ? plan.getDescription() : "")
             .durationDays(plan.getDurationDays() != null ? plan.getDurationDays() : 0)
-            .price(plan.getPrice() != null ? plan.getPrice() : 0.0)
-            .joiningFee(plan.getJoiningFee() != null ? plan.getJoiningFee() : 0.0)
-            .discountPercentage(plan.getDiscountPercentage() != null ? plan.getDiscountPercentage() : 0.0)
-            .taxPercentage(plan.getTaxPercentage() != null ? plan.getTaxPercentage() : 0.0)
+            .price(plan.getPrice() != null ? plan.getPrice() : BigDecimal.ZERO)
+            .joiningFee(plan.getJoiningFee() != null ? plan.getJoiningFee() : BigDecimal.ZERO)
+            .discountPercentage(plan.getDiscountPercentage() != null ? plan.getDiscountPercentage() : BigDecimal.ZERO)
+            .taxPercentage(plan.getTaxPercentage() != null ? plan.getTaxPercentage() : BigDecimal.ZERO)
             .maxPtSessions(plan.getMaxPtSessions() != null ? plan.getMaxPtSessions() : 0)
             .freezeAllowance(plan.getFreezeAllowance() != null ? plan.getFreezeAllowance() : 0)
             .active(plan.isActive())

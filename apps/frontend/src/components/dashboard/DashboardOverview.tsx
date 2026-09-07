@@ -1,5 +1,7 @@
 import { StatCard } from '../common/Card'
 import { EmptyState, LoadingState } from '../common/StateComponents'
+import type { GymRole } from '../../types/auth'
+import { getDashboardQuickActionsForRole } from '../../utils/dashboardActions'
 import './DashboardOverview.css'
 
 interface DashboardStats {
@@ -25,15 +27,19 @@ interface DashboardStats {
 }
 
 interface DashboardOverviewProps {
+  role: GymRole
   stats?: DashboardStats
   loading?: boolean
   onStatClick?: (stat: string) => void
+  onQuickActionClick?: (path: string) => void
 }
 
 export function DashboardOverview({
+  role,
   stats,
   loading,
   onStatClick,
+  onQuickActionClick,
 }: DashboardOverviewProps) {
   if (loading) return <LoadingState />
   if (!stats)
@@ -44,6 +50,8 @@ export function DashboardOverview({
         message="Dashboard data will appear here"
       />
     )
+
+  const quickActions = getDashboardQuickActionsForRole(role)
 
   return (
     <div className="dashboard-overview">
@@ -188,19 +196,10 @@ export function DashboardOverview({
       <div className="dashboard-section">
         <h2 className="dashboard-section-title">Quick Actions</h2>
         <div className="quick-actions-grid">
-          {[
-            { icon: '➕', label: 'Add Member', action: 'add-member' },
-            { icon: '💳', label: 'Record Payment', action: 'payment' },
-            { icon: '📋', label: 'Mark Attendance', action: 'attendance' },
-            { icon: '🎫', label: 'New Membership', action: 'membership' },
-            { icon: '🎯', label: 'Add Lead', action: 'lead' },
-            { icon: '💰', label: 'Add Expense', action: 'expense' },
-            { icon: '👫', label: 'Create Class', action: 'class' },
-            { icon: '🏋️', label: 'Assign Workout', action: 'workout' },
-          ].map((action) => (
+          {quickActions.map((action) => (
             <button
-              key={action.action}
-              onClick={() => onStatClick?.(action.action)}
+              key={action.id}
+              onClick={() => onQuickActionClick?.(action.path)}
               className="quick-action-button"
             >
               <span className="quick-action-icon">{action.icon}</span>

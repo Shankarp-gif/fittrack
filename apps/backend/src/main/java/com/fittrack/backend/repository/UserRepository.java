@@ -26,7 +26,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
         join fetch u.role r
         left join fetch u.organization o
         left join fetch u.branch b
-        where o.id = :organizationId
+        where o.id = :organizationId and u.active = true
         order by u.createdAt desc
     """)
     List<User> findByOrganizationId(@Param("organizationId") Long organizationId);
@@ -36,7 +36,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
         join fetch u.role r
         left join fetch u.organization o
         left join fetch u.branch b
-        where o.id = :organizationId and r.name in :roles
+        where o.id = :organizationId and r.name in :roles and u.active = true
         order by u.createdAt desc
     """)
     List<User> findByOrganizationIdAndRoleNames(
@@ -49,7 +49,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
         join fetch u.role r
         left join fetch u.organization o
         left join fetch u.branch b
-        where b.id = :branchId and r.name = :role
+        where b.id = :branchId and r.name = :role and u.active = true
         order by u.createdAt desc
     """)
     List<User> findByBranchIdAndRoleName(
@@ -62,7 +62,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
         join fetch u.role r
         left join fetch u.organization o
         left join fetch u.branch b
-        where o.id = :organizationId and r.name = :role
+        where o.id = :organizationId and r.name = :role and u.active = true
         order by u.createdAt desc
     """)
     List<User> findByOrganizationIdAndRoleName(

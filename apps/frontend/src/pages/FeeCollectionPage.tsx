@@ -21,13 +21,21 @@ export function FeeCollectionPage() {
   const fetchFeeData = async () => {
     setLoading(true)
     try {
-      const [collectionResponse, feesResponse, transactionsResponse] = await Promise.all([
-        api.get('/api/fees/collection-summary').catch(() => ({ data: null })),
-        api.get('/api/fees/records').catch(() => ({ data: [] })),
-        api.get('/api/fees/transactions').catch(() => ({ data: [] })),
+      const [collectionResponse, paymentsResponse] = await Promise.all([
+        api.get('/api/payments/collection-summary').catch(() => ({ data: null })),
+        api.get('/api/payments?page=0&size=100').catch(() => ({ data: { content: [] } })),
       ])
 
-      const collection: FeeCollection = collectionResponse.data || {
+      const collectionData = collectionResponse.data
+      const collection: FeeCollection = collectionData ? {
+        totalMembers: collectionData.totalMembers || 0,
+        paidMembers: collectionData.totalPaidPayments || 0,
+        pendingMembers: collectionData.totalPendingPayments || 0,
+        overdueFees: collectionData.overdueMembers || 0,
+        totalCollected: parseFloat(collectionData.totalCollected || 0),
+        totalPending: parseFloat(collectionData.totalPending || 0),
+        collectionPercentage: collectionData.collectionPercentage || 0,
+      } : {
         totalMembers: 0,
         paidMembers: 0,
         pendingMembers: 0,
@@ -37,9 +45,30 @@ export function FeeCollectionPage() {
         collectionPercentage: 0,
       }
 
+      const paymentsData = paymentsResponse.data?.content || []
+      const feeRecords = paymentsData.map((p: any) => ({
+        id: p.id,
+        memberName: p.memberName,
+        amount: parseFloat(p.finalAmount || 0),
+        status: p.paymentStatus,
+        dueDate: p.createdAt,
+        paidDate: p.paidAt,
+      }))
+
+      const paidPayments = paymentsData.filter((p: any) => p.paymentStatus === 'PAID')
+      const transactions = paidPayments.map((p: any) => ({
+        id: p.id,
+        memberName: p.memberName,
+        amount: parseFloat(p.finalAmount || 0),
+        paymentDate: p.paidAt || new Date().toISOString(),
+        paymentMode: p.paymentMethod,
+        referenceNo: p.referenceNumber || p.receiptNumber || 'N/A',
+        status: 'COMPLETED',
+      }))
+
       setFeeCollection(collection)
-      setFeeRecords(feesResponse.data || [])
-      setTransactions(transactionsResponse.data || [])
+      setFeeRecords(feeRecords)
+      setTransactions(transactions)
     } catch (error) {
       console.error('Error fetching fee data:', error)
       setFeeCollection({
@@ -58,12 +87,40 @@ export function FeeCollectionPage() {
     }
   }
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
     if (selectedFee && paymentAmount) {
-      alert(`Payment of ₹${paymentAmount} processed for ${selectedFee.memberName}`)
-      setShowPaymentModal(false)
-      setPaymentAmount('')
-      setSelectedFee(null)
+      try {
+        setLoading(true)
+        // Extract member ID from fee record - REQUIRED
+        const memberId = (selectedFee as any).memberId
+
+        if (!memberId) {
+          alert('Error: Member ID not found. Please select a valid fee record.')
+          setLoading(false)
+          return
+        }
+
+        const paymentRequest = {
+          memberId: memberId,
+          amount: parseFloat(paymentAmount),
+          paymentMethod: 'CASH',
+          paymentStatus: 'PAID',
+          paymentReason: 'MEMBERSHIP_RENEWAL',
+        }
+
+        await api.post('/api/payments', paymentRequest)
+        alert(`Payment of ₹${paymentAmount} processed for ${selectedFee.memberName}`)
+        setShowPaymentModal(false)
+        setPaymentAmount('')
+        setSelectedFee(null)
+        // Refresh the fee data
+        await fetchFeeData()
+      } catch (error) {
+        console.error('Error processing payment:', error)
+        alert('Error processing payment. Please try again.')
+      } finally {
+        setLoading(false)
+      }
     }
   }
 

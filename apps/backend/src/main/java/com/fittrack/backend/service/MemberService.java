@@ -2,9 +2,9 @@ package com.fittrack.backend.service;
 
 import com.fittrack.backend.dto.CreateMemberRequest;
 import com.fittrack.backend.dto.MemberDTO;
-import com.fittrack.backend.entity.Member;
 import com.fittrack.backend.entity.enums.MemberStatus;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -14,6 +14,10 @@ public interface MemberService {
     MemberDTO updateMember(Long memberId, CreateMemberRequest request);
 
     MemberDTO getMember(Long memberId);
+
+    Optional<MemberDTO> findMemberByEmail(String email);
+
+    Optional<MemberDTO> findMemberByOrganizationAndEmail(Long organizationId, String email);
 
     Page<MemberDTO> listMembers(Long organizationId, Long branchId, Pageable pageable);
 

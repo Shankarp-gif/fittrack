@@ -1,9 +1,11 @@
 package com.fittrack.backend.controller;
 
+import com.fittrack.backend.dto.AdminUserResponse;
 import com.fittrack.backend.dto.AssignAdminToOrganizationRequest;
 import com.fittrack.backend.dto.ChangeRoleRequest;
 import com.fittrack.backend.dto.CreateAdminRequest;
 import com.fittrack.backend.dto.CreateOrganizationRequest;
+import com.fittrack.backend.dto.CreateUserWithDefaultPasswordRequest;
 import com.fittrack.backend.dto.OrganizationDTO;
 import com.fittrack.backend.dto.UpdateProfileRequest;
 import com.fittrack.backend.dto.UserListResponse;
@@ -60,7 +62,27 @@ public class UserController {
         userService.deleteUser(authentication.getName(), userId);
     }
 
+    /**
+     * Assign a supervisor to a user (only for SUPER_ADMIN, ADMIN, RECEPTIONIST roles)
+     * @param userId The user to assign a supervisor to
+     * @param supervisorId The supervisor user ID
+     */
+    @PutMapping("/{userId}/supervisor/{supervisorId}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public UserMeResponse assignSupervisor(
+        Authentication authentication,
+        @PathVariable Long userId,
+        @PathVariable Long supervisorId) {
+        return userService.assignSupervisor(authentication.getName(), userId, supervisorId);
+    }
+
     // SuperAdmin-only endpoints
+    @GetMapping("/by-role/{role}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public List<AdminUserResponse> getUsersByRole(@PathVariable String role) {
+        return userService.getUsersByRole(role);
+    }
+
     @PostMapping("/admin/create")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public UserMeResponse createAdmin(@Valid @RequestBody CreateAdminRequest request) {
@@ -85,6 +107,13 @@ public class UserController {
         return userService.getAllOrganizations();
     }
 
+    // Alias endpoint for /api/organizations
+    @GetMapping("/organizations")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public List<OrganizationDTO> getOrganizationsAlias() {
+        return userService.getAllOrganizations();
+    }
+
     @GetMapping("/organization/{organizationId}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public OrganizationDTO getOrganization(@PathVariable Long organizationId) {
@@ -104,5 +133,19 @@ public class UserController {
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public void deactivateOrganization(@PathVariable Long organizationId) {
         userService.deactivateOrganization(organizationId);
+    }
+
+    @GetMapping("/organization/{organizationId}/users")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public List<UserListResponse> getUsersByOrganization(@PathVariable Long organizationId) {
+        return userService.getUsersByOrganization(organizationId);
+    }
+
+    @PostMapping("/create-with-default-password")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    public UserMeResponse createUserWithDefaultPassword(
+            Authentication authentication,
+            @Valid @RequestBody CreateUserWithDefaultPasswordRequest request) {
+        return userService.createUserWithDefaultPassword(authentication.getName(), request);
     }
 }

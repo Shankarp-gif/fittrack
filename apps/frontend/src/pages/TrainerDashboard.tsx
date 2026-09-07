@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Users, Award, Zap, TrendingUp, Calendar, Clock } from 'lucide-react'
 import { api } from '../services/api'
 import '../styles/TrainerDashboard.css'
@@ -22,6 +23,7 @@ interface TrainerStats {
 }
 
 export function TrainerDashboard() {
+  const navigate = useNavigate()
   const [stats, setStats] = useState<TrainerStats | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -138,7 +140,7 @@ export function TrainerDashboard() {
                     <h4>{session.clientName}</h4>
                     <p>{session.type}</p>
                   </div>
-                  <button className="session-action">Start</button>
+                  <button className="session-action" onClick={() => navigate('/workouts')}>Start</button>
                 </div>
               ))}
             </div>
@@ -223,19 +225,19 @@ export function TrainerDashboard() {
         </div>
 
         <div className="actions-grid role-dashboard-actions-grid">
-          <button className="action-card role-dashboard-action-card">
+          <button className="action-card role-dashboard-action-card" onClick={() => navigate('/members')}>
             <Users size={24} />
-            <span>Add New Client</span>
+            <span>View Clients</span>
           </button>
-          <button className="action-card role-dashboard-action-card">
+          <button className="action-card role-dashboard-action-card" onClick={() => navigate('/classes')}>
             <Calendar size={24} />
             <span>Schedule Session</span>
           </button>
-          <button className="action-card role-dashboard-action-card">
+          <button className="action-card role-dashboard-action-card" onClick={() => navigate('/progress')}>
             <TrendingUp size={24} />
             <span>Update Progress</span>
           </button>
-          <button className="action-card role-dashboard-action-card">
+          <button className="action-card role-dashboard-action-card" onClick={() => navigate('/plans')}>
             <Award size={24} />
             <span>Create Workout Plan</span>
           </button>

@@ -214,6 +214,22 @@
   outline-offset: 2px;
 }
 
+.org-name-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  max-width: min(420px, 45vw);
+  background: linear-gradient(135deg, rgba(0, 217, 255, 0.18), rgba(59, 130, 246, 0.12));
+  color: var(--text-primary);
+  border: 1px solid rgba(0, 217, 255, 0.35);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-lg) var(--spacing-2xl);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Quick Stats - Enhanced Cards */
 .quick-stats {
   display: grid;
@@ -685,12 +701,13 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
+  align-items: stretch;
 }
 
 .action-btn {
-  display: flex;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 16px;
   align-items: center;
-  justify-content: space-between;
   gap: var(--spacing-md);
   background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
   border: 1px solid rgba(0, 217, 255, 0.1);
@@ -700,6 +717,29 @@
   font-weight: 700;
   cursor: pointer;
   transition: all var(--transition-base);
+  text-align: left;
+  width: 100%;
+}
+
+.action-label {
+  min-width: 0;
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  display: block;
+}
+
+.action-btn > svg:last-child {
+  justify-self: end;
+}
+
+/* Override global auto-adjustment rule that breaks button spans into per-character columns. */
+.quick-actions-card .action-btn span.action-label {
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 .action-btn:hover {
@@ -800,6 +840,14 @@
   border-color: var(--status-warning);
   color: var(--status-warning);
   background: rgba(245, 158, 11, 0.05);
+}
+
+.btn-renew:disabled,
+.btn-freeze:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 /* Responsive */

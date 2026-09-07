@@ -36,6 +36,14 @@ public class MemberAttendance {
     @JoinColumn(name = "branch_id", nullable = false)
     private Branch branch;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organization_id", nullable = false)
+    private Organization organization;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "supervisor_id")
+    private User supervisor;
+
     @Column(name = "check_in_time", nullable = false)
     private LocalDateTime checkInTime;
 
@@ -56,4 +64,3 @@ public class MemberAttendance {
         createdAt = LocalDateTime.now();
     }
 }
-

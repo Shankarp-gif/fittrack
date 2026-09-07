@@ -14,10 +14,18 @@ public class AttendanceDTO {
     private Long id;
     private Long memberId;
     private String memberName;
+    private Long organizationId;
+    private String organizationName;
+    private Long branchId;
+    private String branchName;
     private LocalDateTime checkInTime;
     private LocalDateTime checkOutTime;
+    private LocalDateTime createdAt;
     private String attendanceDate;
     private Long duration; // in minutes
     private String status;
+    private Long recordedByUserId;
+    private String recordedByUserName;
+    private Long supervisorId;
+    private String supervisorName;
 }
-

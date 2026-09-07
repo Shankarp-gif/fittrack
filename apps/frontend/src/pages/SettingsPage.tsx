@@ -14,7 +14,7 @@ const defaultSettings: AppSettings = {
 }
 
 export function SettingsPage() {
-  const { theme, setTheme, resolvedTheme } = useTheme()
+  const { theme, setTheme, resolvedTheme, highContrast, setHighContrast } = useTheme()
   const [settings, setSettings] = useState<AppSettings>(defaultSettings)
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -52,23 +52,31 @@ export function SettingsPage() {
         <p className="muted">Adjust app experience, reminders, and display preferences.</p>
       </section>
 
-      <section className="panel stack-gap">
-        <h2>Appearance</h2>
-        <div className="profile-grid">
-          <label>
-            Theme
-            <select className="search-input" value={theme} onChange={(e) => setTheme(e.target.value as ThemeChoice)}>
-              <option value="system">System</option>
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-            </select>
-          </label>
-          <article className="card">
-            <p className="muted">Resolved theme</p>
-            <h3>{resolvedTheme}</h3>
-          </article>
-        </div>
-      </section>
+       <section className="panel stack-gap">
+         <h2>Appearance</h2>
+         <div className="profile-grid">
+           <label>
+             Theme
+             <select className="search-input" value={theme} onChange={(e) => setTheme(e.target.value as ThemeChoice)}>
+               <option value="system">System</option>
+               <option value="dark">Dark</option>
+               <option value="light">Light</option>
+             </select>
+           </label>
+           <article className="card">
+             <p className="muted">Resolved theme</p>
+             <h3>{resolvedTheme}</h3>
+           </article>
+           <label className="check-row">
+             <input
+               type="checkbox"
+               checked={highContrast}
+               onChange={(e) => setHighContrast(e.target.checked)}
+             />
+             High Contrast Mode (Improved Text Visibility)
+           </label>
+         </div>
+       </section>
 
       <section className="panel stack-gap">
         <h2>Training Preferences</h2>

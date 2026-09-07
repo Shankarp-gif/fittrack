@@ -7,6 +7,9 @@ import com.fittrack.backend.dto.RegisterRequest;
 import com.fittrack.backend.dto.RequestPasswordResetRequest;
 import com.fittrack.backend.dto.ResetPasswordRequest;
 import com.fittrack.backend.dto.UserMeResponse;
+import com.fittrack.backend.entity.Branch;
+import com.fittrack.backend.entity.Member;
+import com.fittrack.backend.entity.Organization;
 import com.fittrack.backend.entity.RefreshToken;
 import com.fittrack.backend.entity.Role;
 import com.fittrack.backend.entity.User;
@@ -14,12 +17,16 @@ import com.fittrack.backend.entity.UserProfile;
 import com.fittrack.backend.entity.enums.RoleName;
 import com.fittrack.backend.exception.AppException;
 import com.fittrack.backend.mapper.UserMapper;
+import com.fittrack.backend.repository.BranchRepository;
+import com.fittrack.backend.repository.MemberRepository;
+import com.fittrack.backend.repository.OrganizationRepository;
 import com.fittrack.backend.repository.RefreshTokenRepository;
 import com.fittrack.backend.repository.RoleRepository;
 import com.fittrack.backend.repository.UserProfileRepository;
 import com.fittrack.backend.repository.UserRepository;
 import com.fittrack.backend.security.JwtService;
 import com.fittrack.backend.service.AuthService;
+import com.fittrack.backend.util.MemberIdGenerator;
 import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -42,6 +49,10 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final OrganizationRepository organizationRepository;
+    private final BranchRepository branchRepository;
+    private final MemberRepository memberRepository;
+    private final MemberIdGenerator memberIdGenerator;
 
     public AuthServiceImpl(
             UserRepository userRepository,
@@ -50,7 +61,11 @@ public class AuthServiceImpl implements AuthService {
             RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
-            JwtService jwtService
+            JwtService jwtService,
+            OrganizationRepository organizationRepository,
+            BranchRepository branchRepository,
+            MemberRepository memberRepository,
+            MemberIdGenerator memberIdGenerator
     ) {
         this.userRepository = userRepository;
         this.profileRepository = profileRepository;
@@ -59,6 +74,10 @@ public class AuthServiceImpl implements AuthService {
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
+        this.organizationRepository = organizationRepository;
+        this.branchRepository = branchRepository;
+        this.memberRepository = memberRepository;
+        this.memberIdGenerator = memberIdGenerator;
     }
 
     @Override
@@ -66,6 +85,17 @@ public class AuthServiceImpl implements AuthService {
         if (userRepository.existsByEmailIgnoreCase(request.email())) {
             throw new AppException(HttpStatus.CONFLICT, "Email is already registered");
         }
+
+        // Verify organization exists
+        Organization organization = organizationRepository.findById(request.organizationId())
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Organization not found"));
+
+        // Get first branch of the organization, or throw error if none exists
+        Branch branch = branchRepository.findByOrganizationId(request.organizationId())
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, 
+                    "No branch found for the selected organization. Please contact support."));
 
         Role userRole = roleRepository.findByName(RoleName.USER)
                 .orElseThrow(() -> new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "USER role not configured"));
@@ -77,6 +107,7 @@ public class AuthServiceImpl implements AuthService {
         user.setMobile(request.mobile());
         user.setAddress(request.address());
         user.setRole(userRole);
+        user.setOrganization(organization);
         user = userRepository.save(user);
 
         UserProfile profile = new UserProfile();
@@ -90,6 +121,20 @@ public class AuthServiceImpl implements AuthService {
         profile.setTrainingPreference(request.trainingPreference());
         profile.setWorkoutFrequency(request.workoutFrequency());
         profileRepository.save(profile);
+
+        // Create member record with auto-generated ID
+        Member member = new Member();
+        member.setMemberIdNumber(memberIdGenerator.generateMemberId());
+        member.setFullName(request.fullName());
+        member.setEmail(request.email());
+        member.setMobile(request.mobile());
+        member.setDateOfBirth(request.dateOfBirth());
+        member.setGender(request.gender() != null ? request.gender().name() : null);
+        member.setAddress(request.address());
+        member.setOrganization(organization);
+        member.setBranch(branch);
+        member.setActive(true);
+        memberRepository.save(member);
 
         return createTokenResponse(user, profile, false);
     }

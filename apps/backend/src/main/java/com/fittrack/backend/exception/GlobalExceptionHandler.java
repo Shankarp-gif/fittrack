@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -33,6 +34,36 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuthenticationException(AuthenticationException ex, HttpServletRequest request) {
+        logger.error("Authentication error at {}: {}", request.getRequestURI(), ex.getMessage());
+
+        String errorCode = "AUTHENTICATION_ERROR";
+        String message = ex.getMessage();
+        HttpStatus status = HttpStatus.UNAUTHORIZED;
+
+        // Check for specific authentication errors
+        if (message != null && message.contains("organization")) {
+            errorCode = "MISSING_ORGANIZATION";
+            message = "User account is not associated with any organization. Please contact system administrator.";
+            status = HttpStatus.FORBIDDEN;
+            logger.error("User missing organization assignment at {}", request.getRequestURI());
+        } else if (message != null && message.contains("principal")) {
+            errorCode = "INVALID_PRINCIPAL";
+            message = "Invalid authentication context. Please login again.";
+        }
+
+        return ResponseEntity.status(status)
+                .body(new ApiErrorResponse(
+                        Instant.now(),
+                        status.value(),
+                        errorCode,
+                        message,
+                        request.getRequestURI(),
+                        List.of()
+                ));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
         List<String> details = ex.getBindingResult().getFieldErrors().stream()
@@ -48,6 +79,20 @@ public class GlobalExceptionHandler {
                 request.getRequestURI(),
                 details
         ));
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
+        logger.warn("Resource not found at {}: {}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiErrorResponse(
+                        Instant.now(),
+                        HttpStatus.NOT_FOUND.value(),
+                        "NOT_FOUND",
+                        ex.getMessage(),
+                        request.getRequestURI(),
+                        List.of()
+                ));
     }
 
     @ExceptionHandler(Exception.class)

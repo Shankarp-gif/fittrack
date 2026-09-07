@@ -35,5 +35,12 @@ export const membersService = {
     })
     return data
   },
+
+  async getMemberByEmail(email: string) {
+    const { data } = await api.get('/api/members/by-email', {
+      params: { email },
+    })
+    return data?.data || data
+  },
 }
 

@@ -80,5 +80,18 @@ public class CustomUserDetails implements UserDetails {
     public Long getUserId() {
         return user.getId();
     }
-}
 
+    /**
+     * Get the role name
+     */
+    public String getRoleName() {
+        return user.getRole() != null ? user.getRole().getName().name() : null;
+    }
+
+    /**
+     * Get the supervisor ID
+     */
+    public Long getSupervisorId() {
+        return user.getSupervisor() != null ? user.getSupervisor().getId() : null;
+    }
+}

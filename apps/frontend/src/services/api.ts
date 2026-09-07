@@ -20,11 +20,20 @@ api.interceptors.response.use(
     const requestUrl = (error.config?.url as string | undefined) ?? ''
     const isAuthEndpoint = requestUrl.startsWith('/api/auth/')
 
-    if (!isAuthEndpoint && (status === 401 || status === 403)) {
+    // Only redirect to login if token is actually invalid/expired
+    // Don't redirect for 403 Forbidden (authorization issues) or other errors
+    if (!isAuthEndpoint && status === 401) {
+      // Token expired or invalid
       tokenStorage.clear()
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        console.error('Token expired, redirecting to login')
         window.location.assign('/login')
       }
+    }
+
+    // For 403, log error but don't redirect - let app handle it
+    if (!isAuthEndpoint && status === 403) {
+      console.error('Access denied (403) for', requestUrl)
     }
 
     return Promise.reject(error)

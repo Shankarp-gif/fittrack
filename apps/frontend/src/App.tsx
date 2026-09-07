@@ -26,10 +26,20 @@ import { SettingsPage } from './pages/SettingsPage'
 import { WorkoutsPage } from './pages/WorkoutsPage'
 import { ProgressPage } from './pages/ProgressPage'
 import { GoalsPage } from './pages/GoalsPage'
+import { NotificationsPage } from './pages/NotificationsPage'
 import { SimplePage } from './pages/SimplePage'
 import { MembersPage } from './pages/MembersPage'
+import { MemberDetailPage } from './pages/MemberDetailPage'
+import { MemberEditPage } from './pages/MemberEditPage'
+import { MemberNewPage } from './pages/MemberNewPage'
 import { ReportsPage } from './pages/ReportsPage'
+import { PlansPage } from './pages/PlansPage'
+import { SupervisorHierarchyPage } from './pages/SupervisorHierarchyPage'
+import { OrganizationManagement } from './pages/OrganizationManagement'
+import { SuperAdminOrganizationHierarchy } from './pages/SuperAdminOrganizationHierarchy'
+import { AdminRoleManagement } from './pages/AdminRoleManagement'
 import './styles/design-system.css'
+import './styles/auto-adjustment.css'
 import './App.css'
 
 function PublicOnly({ children }: { children: React.JSX.Element }) {
@@ -160,6 +170,14 @@ export default function App() {
                </RoleBasedRoute>
              }
            />
+            <Route
+              path="/notifications"
+              element={
+                <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'RECEPTIONIST', 'USER']}>
+                  <NotificationsPage />
+                </RoleBasedRoute>
+              }
+            />
            <Route
              path="/settings"
              element={
@@ -177,17 +195,30 @@ export default function App() {
                 </RoleBasedRoute>
               }
             />
-           <Route
-             path="/members/new"
-             element={
-               <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST']}>
-                 <SimplePage
-                   title="New Member Registration"
-                   description="Create a new member profile and membership from this page."
-                 />
-               </RoleBasedRoute>
-             }
-           />
+            <Route
+              path="/members/:id"
+              element={
+                <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'RECEPTIONIST']}>
+                  <MemberDetailPage />
+                </RoleBasedRoute>
+              }
+            />
+            <Route
+              path="/members/:id/edit"
+              element={
+                <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST']}>
+                  <MemberEditPage />
+                </RoleBasedRoute>
+              }
+            />
+            <Route
+              path="/members/new"
+              element={
+                <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST']}>
+                  <MemberNewPage />
+                </RoleBasedRoute>
+              }
+            />
            <Route
              path="/trainers"
              element={
@@ -210,11 +241,20 @@ export default function App() {
                </RoleBasedRoute>
              }
            />
+             <Route
+               path="/reports"
+               element={
+                 <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN']}>
+                   <ReportsPage />
+                 </RoleBasedRoute>
+               }
+             />
+
             <Route
-              path="/reports"
+              path="/plans"
               element={
-                <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN']}>
-                  <ReportsPage />
+                <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'USER']}>
+                  <PlansPage />
                 </RoleBasedRoute>
               }
             />
@@ -228,7 +268,39 @@ export default function App() {
                </RoleBasedRoute>
              }
            />
-         </Route>
+            <Route
+              path="/hierarchy"
+              element={
+                <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN']}>
+                  <SupervisorHierarchyPage />
+                </RoleBasedRoute>
+              }
+            />
+            <Route
+              path="/organizations"
+              element={
+                <RoleBasedRoute requiredRoles={['SUPER_ADMIN']}>
+                  <OrganizationManagement />
+                </RoleBasedRoute>
+              }
+            />
+            <Route
+              path="/organizations-hierarchy"
+              element={
+                <RoleBasedRoute requiredRoles={['SUPER_ADMIN']}>
+                  <SuperAdminOrganizationHierarchy />
+                </RoleBasedRoute>
+              }
+            />
+            <Route
+              path="/role-management"
+              element={
+                <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN']}>
+                  <AdminRoleManagement />
+                </RoleBasedRoute>
+              }
+            />
+           </Route>
 
         {/* Access Denied */}
         <Route path="/access-denied" element={<AccessDeniedPage />} />

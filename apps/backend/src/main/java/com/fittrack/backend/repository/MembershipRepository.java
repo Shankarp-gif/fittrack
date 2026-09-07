@@ -14,7 +14,9 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface MembershipRepository extends JpaRepository<Membership, Long> {
-    Optional<Membership> findByMemberId(Long memberId);
+    Optional<Membership> findFirstByMemberIdAndActiveTrueOrderByCreatedAtDesc(Long memberId);
+
+    List<Membership> findAllByMemberIdAndActiveTrueOrderByCreatedAtDesc(Long memberId);
 
     Page<Membership> findByStatus(MemberStatus status, Pageable pageable);
 

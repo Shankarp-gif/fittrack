@@ -67,6 +67,7 @@ export interface RegisterRequest {
   goal: GoalType
   trainingPreference?: string
   workoutFrequency?: number
+  organizationId: number
 }
 
 export interface UpdateProfileRequest {

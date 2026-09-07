@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Users, DollarSign, Clock, LogIn, UserPlus, CreditCard } from 'lucide-react'
 import { api } from '../services/api'
 import '../styles/ReceptionistDashboard.css'
@@ -30,6 +31,7 @@ interface ReceptionistStats {
 }
 
 export function ReceptionistDashboard() {
+  const navigate = useNavigate()
   const [stats, setStats] = useState<ReceptionistStats | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -134,7 +136,7 @@ export function ReceptionistDashboard() {
         <div className="registrations-section role-dashboard-card">
           <div className="section-header">
             <h2>New Registrations Today</h2>
-            <button className="btn-add">+ Add Member</button>
+            <button className="btn-add" onClick={() => navigate('/members/new')}>+ Add Member</button>
           </div>
 
           {loading ? (
@@ -151,7 +153,7 @@ export function ReceptionistDashboard() {
                     <h4>{reg.name}</h4>
                     <p>{reg.plan}</p>
                   </div>
-                  <button className="reg-action">Complete</button>
+                  <button className="reg-action" onClick={() => navigate('/membership-plans')}>Complete</button>
                 </div>
               ))}
             </div>
@@ -162,7 +164,7 @@ export function ReceptionistDashboard() {
         <div className="checkins-section role-dashboard-card">
           <div className="section-header">
             <h2>Recent Check-ins</h2>
-            <button className="btn-checkin">Quick Check-in</button>
+            <button className="btn-checkin" onClick={() => navigate('/attendance')}>Quick Check-in</button>
           </div>
 
           {loading ? (
@@ -179,7 +181,7 @@ export function ReceptionistDashboard() {
                     <h4>{checkin.memberName}</h4>
                     <p>{checkin.checkInTime}</p>
                   </div>
-                  <button className="checkin-action">Update</button>
+                  <button className="checkin-action" onClick={() => navigate('/attendance')}>Update</button>
                 </div>
               ))}
             </div>
@@ -190,7 +192,7 @@ export function ReceptionistDashboard() {
         <div className="fees-section role-dashboard-card">
           <div className="section-header">
             <h2>Pending Fee Collection</h2>
-            <button className="btn-collect">Collect Fees</button>
+            <button className="btn-collect" onClick={() => navigate('/fees')}>Collect Fees</button>
           </div>
 
           {loading ? (
@@ -207,7 +209,7 @@ export function ReceptionistDashboard() {
                     <h4>{fee.memberName}</h4>
                     <p className="overdue-days">{fee.daysOverdue} days overdue</p>
                   </div>
-                  <button className="fee-action">Collect</button>
+                  <button className="fee-action" onClick={() => navigate('/fees')}>Collect</button>
                 </div>
               ))}
             </div>
@@ -222,21 +224,21 @@ export function ReceptionistDashboard() {
         </div>
 
         <div className="actions-grid role-dashboard-actions-grid">
-          <button className="action-card role-dashboard-action-card">
+          <button className="action-card role-dashboard-action-card" onClick={() => navigate('/members/new')}>
             <UserPlus size={24} />
             <span>Register Member</span>
           </button>
-          <button className="action-card role-dashboard-action-card">
+          <button className="action-card role-dashboard-action-card" onClick={() => navigate('/attendance')}>
             <LogIn size={24} />
             <span>Check-in Member</span>
           </button>
-          <button className="action-card role-dashboard-action-card">
+          <button className="action-card role-dashboard-action-card" onClick={() => navigate('/fees')}>
             <CreditCard size={24} />
             <span>Collect Payment</span>
           </button>
-          <button className="action-card role-dashboard-action-card">
+          <button className="action-card role-dashboard-action-card" onClick={() => navigate('/membership-plans')}>
             <DollarSign size={24} />
-            <span>Fee Report</span>
+            <span>Membership Plans</span>
           </button>
         </div>
       </div>

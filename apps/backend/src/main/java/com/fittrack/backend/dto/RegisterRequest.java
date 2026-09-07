@@ -23,7 +23,8 @@ public record RegisterRequest(
         @NotNull FitnessLevel fitnessLevel,
         @NotNull GoalType goal,
         String trainingPreference,
-        Integer workoutFrequency
+        Integer workoutFrequency,
+        @NotNull Long organizationId
 ) {
 }
 

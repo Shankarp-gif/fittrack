@@ -100,6 +100,40 @@ p {
   box-shadow: 0 0 0 3px rgba(0, 217, 255, 0.1);
 }
 
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.password-input-wrapper input {
+  width: 100%;
+  padding-right: 40px;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-base);
+}
+
+.password-toggle-btn:hover {
+  color: var(--accent-primary);
+}
+
+.password-toggle-btn:active {
+  transform: scale(0.95);
+}
+
 .primary-btn,
 .ghost-btn {
   border: none;

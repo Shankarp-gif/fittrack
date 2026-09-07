@@ -53,7 +53,10 @@ public class User extends BaseEntity {
     @JoinColumn(name = "branch_id")
     private Branch branch;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "supervisor_id")
+    private User supervisor;
+
     @OneToOne(mappedBy = "user")
     private UserProfile profile;
 }
-

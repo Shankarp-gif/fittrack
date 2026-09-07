@@ -1,0 +1,541 @@
+/* Admin Role Management Styles */
+
+.admin-role-management {
+  padding: var(--spacing-2xl);
+  background: var(--bg-primary);
+  min-height: 100vh;
+}
+
+/* Header */
+.role-management-header {
+  margin-bottom: var(--spacing-2xl);
+  padding-bottom: var(--spacing-xl);
+  border-bottom: 2px solid var(--border-color);
+}
+
+.role-management-header .header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-2xl);
+}
+
+.role-management-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.role-management-header .muted {
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+/* Buttons */
+.secondary-btn {
+  padding: var(--spacing-md) var(--spacing-xl);
+  background: var(--bg-secondary);
+  color: var(--accent-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  text-transform: uppercase;
+  font-size: 0.9rem;
+}
+
+.secondary-btn:hover {
+  background: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
+}
+
+/* Role Guide */
+.role-guide-section {
+  margin-bottom: var(--spacing-2xl);
+}
+
+.role-guide {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+}
+
+.role-guide h3 {
+  color: var(--text-primary);
+  font-size: 1.3rem;
+  margin-bottom: var(--spacing-xl);
+  font-weight: 700;
+}
+
+.roles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.role-card {
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+  color: white;
+  transition: all var(--transition-base);
+}
+
+.role-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.role-card h4 {
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.role-card p {
+  margin: var(--spacing-sm) 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.default-password {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.default-password small {
+  display: block;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.role-super-admin {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.8), rgba(99, 102, 241, 0.8));
+}
+
+.role-admin {
+  background: var(--status-error);
+}
+
+.role-trainer {
+  background: var(--status-info);
+}
+
+.role-receptionist {
+  background: var(--status-warning);
+}
+
+.role-user {
+  background: var(--status-success);
+}
+
+.role-default {
+  background: rgba(156, 163, 175, 0.6);
+}
+
+/* Filters */
+.role-management-filters {
+  display: flex;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-2xl);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-input,
+.filter-select {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 1rem;
+  flex: 1;
+  min-width: 200px;
+  transition: all var(--transition-base);
+}
+
+.filter-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.filter-input:focus,
+.filter-select:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(0, 217, 255, 0.1);
+}
+
+.filter-result {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+/* Table */
+.role-management-table {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: var(--spacing-2xl);
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.users-role-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.users-role-table thead {
+  background: var(--bg-tertiary);
+  border-bottom: 2px solid var(--border-color);
+}
+
+.users-role-table th {
+  padding: var(--spacing-lg);
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+}
+
+.users-role-table tbody tr {
+  border-bottom: 1px solid var(--border-color);
+  transition: all var(--transition-base);
+}
+
+.users-role-table tbody tr:hover {
+  background: var(--bg-tertiary);
+}
+
+.users-role-table tbody tr.inactive-row {
+  opacity: 0.6;
+}
+
+.users-role-table td {
+  padding: var(--spacing-lg);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+.user-name {
+  font-weight: 600;
+}
+
+.user-email {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.user-org {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.user-role {
+  min-width: 150px;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.role-super-admin {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(99, 102, 241, 0.2));
+  color: var(--accent-primary);
+}
+
+.role-admin {
+  background: var(--error-light);
+  color: var(--status-error);
+}
+
+.role-trainer {
+  background: var(--info-light);
+  color: var(--status-info);
+}
+
+.role-receptionist {
+  background: var(--warning-light);
+  color: var(--status-warning);
+}
+
+.role-user {
+  background: var(--success-light);
+  color: var(--status-success);
+}
+
+.role-default {
+  background: rgba(156, 163, 175, 0.1);
+  color: var(--text-secondary);
+}
+
+.user-status {
+  min-width: 120px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+
+.status-badge.active {
+  background: var(--success-light);
+  color: var(--status-success);
+}
+
+.status-badge.inactive {
+  background: rgba(156, 163, 175, 0.1);
+  color: var(--text-secondary);
+}
+
+.user-joined {
+  color: var(--text-tertiary);
+  font-size: 0.95rem;
+}
+
+.user-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  min-width: 100px;
+}
+
+.btn-edit,
+.btn-save,
+.btn-cancel {
+  padding: var(--spacing-sm);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-base);
+  flex: 1;
+}
+
+.btn-edit {
+  background: var(--info-light);
+  color: var(--status-info);
+}
+
+.btn-edit:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.2);
+  transform: scale(1.05);
+}
+
+.btn-edit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-save {
+  background: var(--success-light);
+  color: var(--status-success);
+}
+
+.btn-save:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.2);
+  transform: scale(1.05);
+}
+
+.btn-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-cancel {
+  background: rgba(156, 163, 175, 0.1);
+  color: var(--text-secondary);
+}
+
+.btn-cancel:hover {
+  background: rgba(107, 114, 128, 0.2);
+  transform: scale(1.05);
+}
+
+.role-select-edit {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.role-select-edit:hover,
+.role-select-edit:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 217, 255, 0.2);
+}
+
+/* Loading & Empty States */
+.loading-state {
+  text-align: center;
+  padding: var(--spacing-3xl);
+  color: var(--text-secondary);
+}
+
+.empty-state {
+  text-align: center;
+  padding: var(--spacing-3xl);
+  color: var(--text-tertiary);
+}
+
+.empty-state svg {
+  margin-bottom: var(--spacing-lg);
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  color: var(--text-primary);
+  font-size: 1.3rem;
+  margin: var(--spacing-lg) 0 var(--spacing-md);
+}
+
+.empty-state p {
+  color: var(--text-secondary);
+}
+
+/* Privileges Info */
+.privileges-info {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+}
+
+.privileges-info h3 {
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  margin-bottom: var(--spacing-lg);
+  font-weight: 700;
+}
+
+.privileges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.privilege-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  text-align: center;
+  transition: all var(--transition-base);
+}
+
+.privilege-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent-primary);
+  box-shadow: 0 8px 16px rgba(0, 217, 255, 0.1);
+}
+
+.privilege-card svg {
+  color: var(--accent-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+.privilege-card h4 {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: var(--spacing-md) 0 var(--spacing-sm);
+  font-weight: 600;
+}
+
+.privilege-card p {
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .role-management-header .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-lg);
+  }
+
+  .role-management-filters {
+    flex-direction: column;
+  }
+
+  .filter-input,
+  .filter-select {
+    min-width: 100%;
+  }
+
+  .users-role-table th,
+  .users-role-table td {
+    padding: var(--spacing-md);
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-role-management {
+    padding: var(--spacing-lg);
+  }
+
+  .role-management-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .roles-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .privileges-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .user-actions {
+    flex-direction: column;
+  }
+
+  .users-role-table {
+    font-size: 0.85rem;
+  }
+
+  .users-role-table th,
+  .users-role-table td {
+    padding: var(--spacing-sm);
+  }
+
+  .user-email {
+    display: none;
+  }
+}
+

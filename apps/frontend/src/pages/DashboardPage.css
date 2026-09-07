@@ -51,12 +51,26 @@
   font-size: 13px;
   transition: all var(--transition-base);
   box-shadow: 0 4px 12px rgba(0, 217, 255, 0.3);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:root[data-theme='light'] .action-btn {
+  background: #0088cc;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3);
 }
 
 .action-btn:hover {
   background: var(--accent-primary-hover);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(0, 217, 255, 0.4);
+}
+
+:root[data-theme='light'] .action-btn:hover {
+  background: #006699;
+  box-shadow: 0 6px 20px rgba(0, 136, 204, 0.4);
 }
 
 .action-icon {
@@ -300,13 +314,25 @@
   font-size: 48px;
   line-height: 1.1;
   font-weight: 800;
-  color: var(--text);
+  color: var(--text-auto-primary, var(--text));
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root[data-theme='light'] .dashboard-hero-title {
+  color: #0a0e27;
 }
 
 .dashboard-hero-subtitle {
   margin: 0;
   font-size: 24px;
-  color: var(--muted);
+  color: var(--text-auto-secondary, var(--muted));
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root[data-theme='light'] .dashboard-hero-subtitle {
+  color: #1a202c;
 }
 
 .dashboard-main-grid {
@@ -347,19 +373,34 @@
 
 .dashboard-summary-label,
 .dashboard-top-performer-name {
-  color: var(--muted);
+  color: var(--text-auto-secondary, var(--muted));
   font-size: 13px;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root[data-theme='light'] .dashboard-summary-label,
+:root[data-theme='light'] .dashboard-top-performer-name {
+  color: #1a202c;
 }
 
 .dashboard-summary-value {
-  color: var(--text);
+  color: var(--text-auto-primary, var(--text));
   font-weight: 700;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root[data-theme='light'] .dashboard-summary-value {
+  color: #0a0e27;
 }
 
 .dashboard-summary-value-positive,
 .dashboard-top-performer-value {
-  color: var(--brand);
+  color: var(--status-success);
   font-weight: 700;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 .dashboard-error-wrap {

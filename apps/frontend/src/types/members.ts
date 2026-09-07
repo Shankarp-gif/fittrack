@@ -1,5 +1,9 @@
 export interface Member {
   id: number
+  organizationId?: number
+  organizationName?: string
+  branchId?: number
+  branchName?: string
   memberIdNumber: string
   fullName: string
   email: string

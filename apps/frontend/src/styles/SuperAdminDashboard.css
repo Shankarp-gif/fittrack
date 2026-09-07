@@ -362,14 +362,15 @@
   justify-content: center;
   width: 36px;
   height: 36px;
-  border: none;
+  border: 1px solid;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
+  background: var(--bg-tertiary);
 }
 
 .action-btn.view {
-  background: var(--info-light);
+  border-color: var(--status-info);
   color: var(--status-info);
 }
 
@@ -379,7 +380,7 @@
 }
 
 .action-btn.edit {
-  background: var(--success-light);
+  border-color: var(--status-success);
   color: var(--status-success);
 }
 
@@ -389,7 +390,7 @@
 }
 
 .action-btn.delete {
-  background: var(--error-light);
+  border-color: var(--status-error);
   color: var(--status-error);
 }
 

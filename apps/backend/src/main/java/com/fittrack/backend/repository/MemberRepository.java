@@ -15,6 +15,10 @@ import org.springframework.stereotype.Repository;
 public interface MemberRepository extends JpaRepository<Member, Long> {
     Optional<Member> findByOrganizationIdAndMemberIdNumber(Long organizationId, String memberIdNumber);
 
+    Optional<Member> findFirstByOrganizationIdAndEmailIgnoreCaseAndActiveTrue(Long organizationId, String email);
+
+    Optional<Member> findFirstByEmailIgnoreCaseAndActiveTrue(String email);
+
     Page<Member> findByOrganizationIdAndBranchId(Long organizationId, Long branchId, Pageable pageable);
 
     Page<Member> findByOrganizationIdAndStatus(Long organizationId, MemberStatus status, Pageable pageable);

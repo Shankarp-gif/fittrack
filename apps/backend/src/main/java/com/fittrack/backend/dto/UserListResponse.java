@@ -9,7 +9,9 @@ public record UserListResponse(
     String email,
     RoleName role,
     boolean active,
-    Instant createdAt
+    Instant createdAt,
+    Long organizationId,
+    String organizationName
 ) {
 }
 

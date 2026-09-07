@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import axios from 'axios'
 import { Link, useNavigate } from 'react-router-dom'
+import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export function LoginPage() {
@@ -11,6 +12,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('admin123')
   const [rememberSession, setRememberSession] = useState(true)
   const [error, setError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -47,10 +49,25 @@ export function LoginPage() {
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
         <h1>Welcome back</h1>
-        <label>Email</label>
-        <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
-        <label>Password</label>
-        <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required />
+         <label>Email</label>
+         <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
+         <label>Password</label>
+         <div className="password-input-wrapper">
+           <input
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             type={showPassword ? 'text' : 'password'}
+             required
+           />
+           <button
+             type="button"
+             className="password-toggle-btn"
+             onClick={() => setShowPassword(!showPassword)}
+             title={showPassword ? 'Hide password' : 'Show password'}
+           >
+             {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+           </button>
+         </div>
         <label className="check-row">
           <input type="checkbox" checked={rememberSession} onChange={(e) => setRememberSession(e.target.checked)} />
           Remember session

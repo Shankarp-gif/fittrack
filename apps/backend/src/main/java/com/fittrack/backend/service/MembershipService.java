@@ -28,6 +28,8 @@ public interface MembershipService {
 
     void freezeMembership(Long membershipId, int days);
 
+    void unfreezeMembership(Long membershipId);
+
     void updateMembershipStatus();
 }
 

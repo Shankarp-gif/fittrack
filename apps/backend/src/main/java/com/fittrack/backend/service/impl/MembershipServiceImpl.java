@@ -13,6 +13,7 @@ import com.fittrack.backend.repository.MembershipPlanRepository;
 import com.fittrack.backend.repository.MembershipRepository;
 import com.fittrack.backend.service.MembershipService;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -39,11 +40,16 @@ public class MembershipServiceImpl implements MembershipService {
         MembershipPlan plan = membershipPlanRepository.findById(request.getMembershipPlanId())
             .orElseThrow(() -> new ResourceNotFoundException("Plan not found"));
 
-        // Check if member already has active membership
-        membershipRepository.findByMemberId(member.getId()).ifPresent(existing -> {
-            if (existing.getStatus() == MemberStatus.ACTIVE) {
-                throw new BusinessLogicException("ACTIVE_MEMBERSHIP_EXISTS", "Member already has an active membership");
+        // If member already has active memberships, close them so the latest plan becomes the single current membership.
+        membershipRepository.findAllByMemberIdAndActiveTrueOrderByCreatedAtDesc(member.getId()).forEach(existing -> {
+            if (existing.getStatus() == MemberStatus.ACTIVE
+                || existing.getStatus() == MemberStatus.EXPIRING_SOON
+                || existing.getStatus() == MemberStatus.FROZEN
+                || existing.getStatus() == MemberStatus.PENDING_PAYMENT) {
+                existing.setStatus(MemberStatus.CANCELLED);
             }
+            existing.setActive(false);
+            membershipRepository.save(existing);
         });
 
         LocalDate startDate = LocalDate.now();
@@ -54,12 +60,13 @@ public class MembershipServiceImpl implements MembershipService {
         membership.setMembershipPlan(plan);
         membership.setStartDate(startDate);
         membership.setEndDate(endDate);
-        membership.setStatus(MemberStatus.ACTIVE);
+        membership.setStatus(determineCurrentStatus(endDate));
 
         BigDecimal price = request.getCustomPrice() != null ? request.getCustomPrice() : plan.getPrice();
         BigDecimal discountAmount = request.getDiscountAmount() != null ? request.getDiscountAmount() : BigDecimal.ZERO;
         BigDecimal taxAmount = request.getTaxAmount() != null ? request.getTaxAmount() :
-            price.multiply(plan.getTaxPercentage() != null ? plan.getTaxPercentage() : BigDecimal.ZERO).divide(BigDecimal.valueOf(100));
+            price.multiply(plan.getTaxPercentage() != null ? plan.getTaxPercentage() : BigDecimal.ZERO)
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
 
         membership.setPrice(price);
         membership.setDiscountAmount(discountAmount);
@@ -69,7 +76,7 @@ public class MembershipServiceImpl implements MembershipService {
         Membership saved = membershipRepository.save(membership);
 
         // Update member status
-        member.setStatus(MemberStatus.ACTIVE);
+        member.setStatus(saved.getStatus());
         memberRepository.save(member);
 
         return toDTO(saved);
@@ -91,12 +98,13 @@ public class MembershipServiceImpl implements MembershipService {
         newMembership.setMembershipPlan(plan);
         newMembership.setStartDate(startDate);
         newMembership.setEndDate(endDate);
-        newMembership.setStatus(MemberStatus.ACTIVE);
+        newMembership.setStatus(determineCurrentStatus(endDate));
         newMembership.setRenewedFrom(oldMembership);
 
         BigDecimal price = plan.getPrice();
         BigDecimal discountAmount = BigDecimal.ZERO;
-        BigDecimal taxAmount = price.multiply(plan.getTaxPercentage() != null ? plan.getTaxPercentage() : BigDecimal.ZERO).divide(BigDecimal.valueOf(100));
+        BigDecimal taxAmount = price.multiply(plan.getTaxPercentage() != null ? plan.getTaxPercentage() : BigDecimal.ZERO)
+            .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
 
         newMembership.setPrice(price);
         newMembership.setDiscountAmount(discountAmount);
@@ -109,7 +117,7 @@ public class MembershipServiceImpl implements MembershipService {
         oldMembership.setActive(false);
         membershipRepository.save(oldMembership);
 
-        member.setStatus(MemberStatus.ACTIVE);
+        member.setStatus(saved.getStatus());
         memberRepository.save(member);
 
         return toDTO(saved);
@@ -126,7 +134,7 @@ public class MembershipServiceImpl implements MembershipService {
     @Override
     @Transactional(readOnly = true)
     public MembershipDTO getMemberCurrentMembership(Long memberId) {
-        Membership membership = membershipRepository.findByMemberId(memberId)
+        Membership membership = membershipRepository.findFirstByMemberIdAndActiveTrueOrderByCreatedAtDesc(memberId)
             .orElseThrow(() -> new ResourceNotFoundException("No active membership found for member"));
         return toDTO(membership);
     }
@@ -181,9 +189,31 @@ public class MembershipServiceImpl implements MembershipService {
             throw new BusinessLogicException("FREEZE_LIMIT_EXCEEDED", "Freeze allowance limit exceeded");
         }
 
+        if (membership.getStatus() == MemberStatus.FROZEN) {
+            throw new BusinessLogicException("MEMBERSHIP_ALREADY_FROZEN", "Membership is already frozen");
+        }
+
         membership.setFrozenUntil(LocalDate.now().plusDays(days));
         membership.setStatus(MemberStatus.FROZEN);
         membership.setFreezeCount((membership.getFreezeCount() != null ? membership.getFreezeCount() : 0) + 1);
+        membership.getMember().setStatus(MemberStatus.FROZEN);
+
+        membershipRepository.save(membership);
+    }
+
+    @Override
+    public void unfreezeMembership(Long membershipId) {
+        Membership membership = membershipRepository.findById(membershipId)
+            .orElseThrow(() -> new ResourceNotFoundException("Membership not found"));
+
+        if (membership.getStatus() != MemberStatus.FROZEN) {
+            throw new BusinessLogicException("MEMBERSHIP_NOT_FROZEN", "Only frozen memberships can be unfrozen");
+        }
+
+        MemberStatus updatedStatus = determineCurrentStatus(membership.getEndDate());
+        membership.setFrozenUntil(null);
+        membership.setStatus(updatedStatus);
+        membership.getMember().setStatus(updatedStatus);
 
         membershipRepository.save(membership);
     }
@@ -191,26 +221,43 @@ public class MembershipServiceImpl implements MembershipService {
     @Override
     @Transactional
     public void updateMembershipStatus() {
+        membershipRepository.findAll().forEach(membership -> {
+            if (!membership.isActive()) {
+                return;
+            }
+
+            if (membership.getStatus() == MemberStatus.FROZEN) {
+                if (membership.getFrozenUntil() != null && !membership.getFrozenUntil().isAfter(LocalDate.now())) {
+                    MemberStatus updatedStatus = determineCurrentStatus(membership.getEndDate());
+                    membership.setFrozenUntil(null);
+                    membership.setStatus(updatedStatus);
+                    membership.getMember().setStatus(updatedStatus);
+                    membershipRepository.save(membership);
+                }
+                return;
+            }
+
+            MemberStatus updatedStatus = determineCurrentStatus(membership.getEndDate());
+            if (membership.getStatus() != updatedStatus) {
+                membership.setStatus(updatedStatus);
+                membership.getMember().setStatus(updatedStatus);
+                membershipRepository.save(membership);
+            }
+        });
+    }
+
+    private MemberStatus determineCurrentStatus(LocalDate endDate) {
         LocalDate today = LocalDate.now();
 
-        // Update expired memberships
-        getExpiredMemberships().forEach(dto -> {
-            Membership membership = membershipRepository.findById(dto.getId()).orElse(null);
-            if (membership != null) {
-                membership.setStatus(MemberStatus.EXPIRED);
-                membership.getMember().setStatus(MemberStatus.EXPIRED);
-                membershipRepository.save(membership);
-            }
-        });
+        if (endDate == null || endDate.isBefore(today)) {
+            return MemberStatus.EXPIRED;
+        }
 
-        // Update expiring soon memberships
-        getExpiringMemberships(7).forEach(dto -> {
-            Membership membership = membershipRepository.findById(dto.getId()).orElse(null);
-            if (membership != null && membership.getStatus() == MemberStatus.ACTIVE) {
-                membership.setStatus(MemberStatus.EXPIRING_SOON);
-                membershipRepository.save(membership);
-            }
-        });
+        if (!endDate.isAfter(today.plusDays(7))) {
+            return MemberStatus.EXPIRING_SOON;
+        }
+
+        return MemberStatus.ACTIVE;
     }
 
     private MembershipDTO toDTO(Membership membership) {

@@ -1,13 +1,35 @@
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getNavItemsForRole } from '../../utils/roleAccess'
 import './Sidebar.css'
 
+interface SidebarProps {
+  isCollapsed?: boolean
+  onToggle?: (collapsed: boolean) => void
+}
 
-export function Sidebar() {
+export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuth()
+  const [collapsed, setCollapsed] = useState(isCollapsed)
+
+  // Load sidebar state from localStorage
+  useEffect(() => {
+    const savedState = localStorage.getItem('sidebarCollapsed')
+    if (savedState !== null) {
+      setCollapsed(JSON.parse(savedState))
+    }
+  }, [])
+
+  // Handle toggle
+  const handleToggle = () => {
+    const newState = !collapsed
+    setCollapsed(newState)
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(newState))
+    onToggle?.(newState)
+  }
 
   // Get navigation items based on user role
   const NAV_ITEMS = user ? getNavItemsForRole(user.role) : []
@@ -24,12 +46,19 @@ export function Sidebar() {
       : user?.role
 
   return (
-    <div className="sidebar">
-      {/* Logo */}
+    <div className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+      {/* Header with Toggle Button */}
       <div className="sidebar-header">
         <button className="logo-btn" onClick={() => navigate('/dashboard')}>
           <span className="logo-icon">⚡</span>
           <span className="logo-text">FitTrack</span>
+        </button>
+        <button
+          className="sidebar-toggle-btn"
+          onClick={handleToggle}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed ? '▶️' : '◀️'}
         </button>
       </div>
 

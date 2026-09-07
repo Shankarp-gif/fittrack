@@ -36,9 +36,13 @@ public class GoalServiceImpl implements GoalService {
     @Override
     public GoalResponse createGoal(String email, CreateGoalRequest request) {
         User user = findUser(email);
+        if (user.getOrganization() == null) {
+            throw new AppException(HttpStatus.FORBIDDEN, "User is not assigned to an organization");
+        }
 
         UserGoal goal = new UserGoal();
         goal.setUser(user);
+        goal.setOrganization(user.getOrganization());
         goal.setTitle(request.title().trim());
         goal.setTargetValue(request.targetValue());
         goal.setCurrentValue(0);

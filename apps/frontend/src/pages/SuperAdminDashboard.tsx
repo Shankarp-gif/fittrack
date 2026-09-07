@@ -20,8 +20,12 @@ interface Organization {
   name: string
   email: string
   phone: string
+  address?: string
   city: string
+  state?: string
   country: string
+  postalCode?: string
+  taxId?: string
   active: boolean
   createdAt: string
 }
@@ -31,9 +35,10 @@ interface AdminUser {
   fullName: string
   email: string
   role: string
-  organizationId: number
-  organizationName: string
+  organizationId: number | null
+  organizationName: string | null
   active: boolean
+  createdAt: string
 }
 
 export function SuperAdminDashboard() {
@@ -72,39 +77,43 @@ export function SuperAdminDashboard() {
     fetchData()
   }, [])
 
-  const fetchData = async () => {
-    setLoading(true)
-    try {
-      // Fetch organizations from API
-      const [orgsResponse, statsResponse] = await Promise.all([
-        api.get('/api/organizations').catch(() => ({ data: [] })),
-        api.get('/api/superadmin/stats').catch(() => ({ data: { totalOrganizations: 0, activeOrganizations: 0, totalAdmins: 0 } })),
-      ])
+   const fetchData = async () => {
+     setLoading(true)
+     try {
+       // Fetch organizations from API
+       const [orgsResponse, adminsResponse] = await Promise.all([
+         api.get('/api/users/organizations').catch(() => ({ data: [] })),
+         api.get('/api/users/by-role/ADMIN').catch(() => ({ data: [] })),
+       ])
 
-      const orgs = orgsResponse.data || []
-      const stats = statsResponse.data || { totalOrganizations: 0, activeOrganizations: 0, totalAdmins: 0 }
+       const orgs = orgsResponse.data || []
+       const adminsData = adminsResponse.data || []
 
-      // Fetch admins from API
-      const adminsResponse = await api.get('/api/users/by-role/ADMIN').catch(() => ({ data: [] }))
-      const adminsData = adminsResponse.data || []
+       // Calculate stats from the data
+       const activeOrgs = orgs.filter((o: any) => o.active).length
+       const stats = {
+         totalOrganizations: orgs.length,
+         activeOrganizations: activeOrgs,
+         totalAdmins: adminsData.length,
+       }
 
-      setOrganizations(orgs)
-      setAdmins(adminsData)
-      setStats(stats)
-    } catch (error) {
-      console.error('Error fetching data:', error)
-      // Show fallback empty state
-      setOrganizations([])
-      setAdmins([])
-      setStats({
-        totalOrganizations: 0,
-        activeOrganizations: 0,
-        totalAdmins: 0,
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
+       setOrganizations(orgs)
+       setAdmins(adminsData)
+       setStats(stats)
+     } catch (error) {
+       console.error('Error fetching data:', error)
+       // Show fallback empty state
+       setOrganizations([])
+       setAdmins([])
+       setStats({
+         totalOrganizations: 0,
+         activeOrganizations: 0,
+         totalAdmins: 0,
+       })
+     } finally {
+       setLoading(false)
+     }
+   }
 
   const handleCreateClick = (type: 'organization' | 'admin') => {
     setModalType(type)
@@ -135,97 +144,132 @@ export function SuperAdminDashboard() {
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setLoading(true)
 
-    if (modalType === 'organization') {
-      // Validate required fields
-      if (!formData.name || !formData.email || !formData.city || !formData.country) {
-        alert('Please fill in all required fields')
-        return
+    try {
+      if (modalType === 'organization') {
+        // Validate required fields
+        if (!formData.name || !formData.email || !formData.city || !formData.country) {
+          alert('Please fill in all required fields')
+          setLoading(false)
+          return
+        }
+
+        // Create organization via API
+        await api.post('/api/users/organization/create', {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          country: formData.country,
+          postalCode: formData.postalCode,
+          taxId: formData.taxId,
+        })
+
+        showCenteredSuccessModal({
+          isOpen: true,
+          title: 'Success!',
+          message: `Organization "${formData.name}" created successfully!`,
+          type: 'success',
+          duration: 4000,
+        })
+
+        // Refresh data
+        await fetchData()
+      } else {
+        // Create admin via API
+        if (!formData.fullName || !formData.email || !formData.password || !formData.organizationId) {
+          alert('Please fill in all required fields')
+          setLoading(false)
+          return
+        }
+
+        const selectedOrg = organizations.find((o) => o.id === parseInt(formData.organizationId))
+        if (!selectedOrg) {
+          alert('Please select a valid organization')
+          setLoading(false)
+          return
+        }
+
+        // Create the admin user with organization ID
+        await api.post('/api/users/admin/create', {
+          fullName: formData.fullName,
+          email: formData.email,
+          password: formData.password,
+          organizationId: parseInt(formData.organizationId),
+        })
+
+        showCenteredSuccessModal({
+          isOpen: true,
+          title: 'Success!',
+          message: `Admin "${formData.fullName}" created successfully!`,
+          type: 'success',
+          duration: 4000,
+        })
+
+        // Refresh data
+        await fetchData()
       }
 
-      // Mock create organization
-      const newOrg: Organization = {
-        id: Math.max(...organizations.map((o) => o.id), 0) + 1,
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        city: formData.city,
-        country: formData.country,
-        active: true,
-        createdAt: new Date().toISOString().split('T')[0],
-      }
-
-      setOrganizations([...organizations, newOrg])
-      showCenteredSuccessModal({
-        isOpen: true,
-        title: 'Success!',
-        message: `Organization "${formData.name}" created successfully!`,
-        type: 'success',
-        duration: 4000,
-      })
-    } else {
-      // Mock create admin
-      if (!formData.fullName || !formData.email || !formData.password || !formData.organizationId) {
-        alert('Please fill in all required fields')
-        return
-      }
-
-      const selectedOrg = organizations.find((o) => o.id === parseInt(formData.organizationId))
-      if (!selectedOrg) {
-        alert('Please select a valid organization')
-        return
-      }
-
-      const newAdmin: AdminUser = {
-        id: Math.max(...admins.map((a) => a.id), 0) + 1,
-        fullName: formData.fullName,
-        email: formData.email,
-        role: 'ADMIN',
-        organizationId: parseInt(formData.organizationId),
-        organizationName: selectedOrg.name,
-        active: true,
-      }
-
-      setAdmins([...admins, newAdmin])
-      showCenteredSuccessModal({
-        isOpen: true,
-        title: 'Success!',
-        message: `Admin "${formData.fullName}" created successfully!`,
-        type: 'success',
-        duration: 4000,
-      })
+      setShowCreateModal(false)
+    } catch (error: any) {
+      console.error('Error creating:', error)
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to create'
+      alert(`Error: ${errorMessage}`)
+    } finally {
+      setLoading(false)
     }
-
-    setShowCreateModal(false)
   }
 
   const handleDeleteOrganization = (id: number) => {
     if (window.confirm('Are you sure you want to deactivate this organization?')) {
-      setOrganizations(organizations.map((org) =>
-        org.id === id ? { ...org, active: false } : org
-      ))
-      showCenteredSuccessModal({
-        isOpen: true,
-        title: 'Deactivated!',
-        message: 'Organization deactivated successfully',
-        type: 'success',
-        duration: 4000,
-      })
+      setLoading(true)
+      api
+        .delete(`/api/users/organization/${id}`)
+        .then(() => {
+          setOrganizations(organizations.map((org) =>
+            org.id === id ? { ...org, active: false } : org
+          ))
+          showCenteredSuccessModal({
+            isOpen: true,
+            title: 'Deactivated!',
+            message: 'Organization deactivated successfully',
+            type: 'success',
+            duration: 4000,
+          })
+        })
+        .catch((error) => {
+          console.error('Error deactivating organization:', error)
+          alert('Failed to deactivate organization')
+        })
+        .finally(() => setLoading(false))
     }
   }
 
   const handleDeleteAdmin = (id: number) => {
     if (window.confirm('Are you sure you want to deactivate this admin?')) {
-      setAdmins(admins.map((admin) =>
-        admin.id === id ? { ...admin, active: false } : admin
-      ))
-      showCenteredSuccessModal({
-        isOpen: true,
-        title: 'Deactivated!',
-        message: 'Admin deactivated successfully',
-        type: 'success',
-        duration: 4000,
-      })
+      setLoading(true)
+      api
+        .delete(`/api/users/${id}`)
+        .then(() => {
+          setAdmins(admins.map((admin) =>
+            admin.id === id ? { ...admin, active: false } : admin
+          ))
+          showCenteredSuccessModal({
+            isOpen: true,
+            title: 'Deactivated!',
+            message: 'Admin deactivated successfully',
+            type: 'success',
+            duration: 4000,
+          })
+        })
+        .catch((error) => {
+          console.error('Error deactivating admin:', error)
+          alert('Failed to deactivate admin')
+        })
+        .finally(() => setLoading(false))
     }
   }
 

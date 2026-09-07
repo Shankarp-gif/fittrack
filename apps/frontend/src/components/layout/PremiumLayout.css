@@ -14,14 +14,19 @@
   margin-top: var(--topnav-height);
   overflow-y: auto;
   overflow-x: hidden;
-  transition: all var(--transition-base);
+  transition: margin-left 0.3s ease-in-out;
 }
 
+/* Collapsed Sidebar State */
+.premium-layout.sidebar-collapsed .main-content {
+  margin-left: 80px;
+}
 
 .content-wrapper {
   min-height: calc(100vh - var(--topnav-height));
   padding: var(--spacing-2xl);
   animation: fadeIn var(--transition-base) ease-out;
+  transition: padding 0.3s ease-in-out;
 }
 
 /* Page Header */
@@ -48,6 +53,18 @@
   margin-top: var(--spacing-lg);
 }
 
+/* Fade In Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
   .content-wrapper {
@@ -61,6 +78,10 @@
 
 @media (max-width: 768px) {
   .main-content {
+    margin-left: 70px;
+  }
+
+  .premium-layout.sidebar-collapsed .main-content {
     margin-left: 70px;
   }
 
@@ -84,6 +105,10 @@
 
 @media (max-width: 480px) {
   .main-content {
+    margin-left: 60px;
+  }
+
+  .premium-layout.sidebar-collapsed .main-content {
     margin-left: 60px;
   }
 
@@ -117,4 +142,3 @@
 .main-content::-webkit-scrollbar-thumb:hover {
   background: var(--accent-primary);
 }
-

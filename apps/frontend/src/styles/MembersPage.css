@@ -270,15 +270,15 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border: none;
+  border: 1px solid;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
-  color: white;
+  background: var(--bg-tertiary);
 }
 
 .action-btn.view-btn {
-  background: rgba(59, 130, 246, 0.1);
+  border-color: #3b82f6;
   color: #3b82f6;
 }
 
@@ -288,7 +288,7 @@
 }
 
 .action-btn.edit-btn {
-  background: rgba(34, 197, 94, 0.1);
+  border-color: #22c55e;
   color: #22c55e;
 }
 
@@ -297,8 +297,18 @@
   color: white;
 }
 
+.action-btn.membership-btn {
+  border-color: #8b5cf6;
+  color: #8b5cf6;
+}
+
+.action-btn.membership-btn:hover {
+  background: #8b5cf6;
+  color: white;
+}
+
 .action-btn.delete-btn {
-  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
   color: #ef4444;
 }
 

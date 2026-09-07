@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Search, Plus, Edit2, Trash2, Eye } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Search, Plus, Edit2, Trash2, Eye, CreditCard } from 'lucide-react'
 import { membersService } from '../services/membersService'
 import type { Member } from '../types/members'
 import { showCenteredSuccessModal } from '../components/common/CenteredSuccessModal'
@@ -8,30 +8,53 @@ import '../styles/MembersPage.css'
 
 export function MembersPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? '')
   const [currentPage, setCurrentPage] = useState(0)
   const [pageSize, setPageSize] = useState(10)
   const [totalPages, setTotalPages] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
   const [sortBy, setSortBy] = useState('id')
   const [sortDir, setSortDir] = useState('DESC')
+  const appliedSearchQuery = searchParams.get('search')?.trim() ?? ''
+  const statusFilter = (searchParams.get('status') ?? '').trim().toUpperCase()
 
   useEffect(() => {
-    fetchMembers()
-  }, [currentPage, pageSize, sortBy, sortDir])
+    setSearchInput(appliedSearchQuery)
+  }, [appliedSearchQuery])
 
-  const fetchMembers = async () => {
+  useEffect(() => {
+    fetchMembers(appliedSearchQuery, statusFilter)
+  }, [currentPage, pageSize, sortBy, sortDir, appliedSearchQuery, statusFilter])
+
+  const fetchMembers = async (query: string = appliedSearchQuery, status: string = statusFilter) => {
     setLoading(true)
     try {
-      const response = searchQuery
-        ? await membersService.searchMembers(searchQuery, currentPage, pageSize)
-        : await membersService.listMembers(currentPage, pageSize, sortBy, sortDir)
+      const shouldFilterLocally = Boolean(status)
+      const pageToLoad = shouldFilterLocally ? 0 : currentPage
+      const sizeToLoad = shouldFilterLocally ? 200 : pageSize
+      const response = query
+        ? await membersService.searchMembers(query, pageToLoad, sizeToLoad)
+        : await membersService.listMembers(pageToLoad, sizeToLoad, sortBy, sortDir)
 
-      setMembers(response.content || [])
-      setTotalPages(response.totalPages)
-      setTotalElements(response.totalElements)
+      const fetchedMembers = response.content || []
+      const filteredMembers = status
+        ? fetchedMembers.filter((member) => member.status?.toUpperCase() === status)
+        : fetchedMembers
+
+      if (shouldFilterLocally) {
+        const sliceStart = currentPage * pageSize
+        const sliceEnd = sliceStart + pageSize
+        setMembers(filteredMembers.slice(sliceStart, sliceEnd))
+        setTotalElements(filteredMembers.length)
+        setTotalPages(Math.max(1, Math.ceil(filteredMembers.length / pageSize)))
+      } else {
+        setMembers(filteredMembers)
+        setTotalPages(response.totalPages)
+        setTotalElements(response.totalElements)
+      }
     } catch (error) {
       console.error('Error fetching members:', error)
       showCenteredSuccessModal({
@@ -48,7 +71,24 @@ export function MembersPage() {
 
   const handleSearch = () => {
     setCurrentPage(0)
-    fetchMembers()
+
+    const params = new URLSearchParams(searchParams)
+    const trimmedQuery = searchInput.trim()
+
+    if (trimmedQuery) {
+      params.set('search', trimmedQuery)
+    } else {
+      params.delete('search')
+    }
+
+    setSearchParams(params)
+  }
+
+  const clearStatusFilter = () => {
+    const params = new URLSearchParams(searchParams)
+    params.delete('status')
+    setCurrentPage(0)
+    setSearchParams(params)
   }
 
   const handleDelete = async (id: number) => {
@@ -92,6 +132,10 @@ export function MembersPage() {
     navigate(`/members/${memberId}/edit`)
   }
 
+  const handleAssignMembership = (memberId: number) => {
+    navigate(`/membership-plans?memberId=${memberId}`)
+  }
+
   const formatDate = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleDateString('en-US')
@@ -127,6 +171,12 @@ export function MembersPage() {
           <p className="page-subtitle role-dashboard-subtitle">
             View, search, and manage gym members
           </p>
+          {statusFilter ? (
+            <p className="page-subtitle role-dashboard-subtitle">
+              Filtered by status: <strong>{statusFilter.replaceAll('_', ' ')}</strong>{' '}
+              <button type="button" className="ghost-btn" onClick={clearStatusFilter}>Clear</button>
+            </p>
+          ) : null}
         </div>
         <button className="add-btn" onClick={handleAddMember}>
           <Plus size={20} />
@@ -140,8 +190,8 @@ export function MembersPage() {
           <input
             type="text"
             placeholder="Search by name, email, or phone..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
             className="search-input"
           />
@@ -243,6 +293,13 @@ export function MembersPage() {
                          >
                            <Edit2 size={16} />
                          </button>
+                          <button
+                            className="action-btn membership-btn"
+                            title="Assign Membership"
+                            onClick={() => handleAssignMembership(member.id)}
+                          >
+                            <CreditCard size={16} />
+                          </button>
                          <button
                            className="action-btn delete-btn"
                            title="Delete"

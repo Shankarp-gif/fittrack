@@ -1,9 +1,11 @@
 package com.fittrack.backend.service.impl;
 
+import com.fittrack.backend.dto.AdminUserResponse;
 import com.fittrack.backend.dto.AssignAdminToOrganizationRequest;
 import com.fittrack.backend.dto.ChangeRoleRequest;
 import com.fittrack.backend.dto.CreateAdminRequest;
 import com.fittrack.backend.dto.CreateOrganizationRequest;
+import com.fittrack.backend.dto.CreateUserWithDefaultPasswordRequest;
 import com.fittrack.backend.dto.OrganizationDTO;
 import com.fittrack.backend.dto.UpdateProfileRequest;
 import com.fittrack.backend.dto.UserListResponse;
@@ -111,12 +113,20 @@ public class UserServiceImpl implements UserService {
 
         List<User> scopedUsers;
         if (role == RoleName.SUPER_ADMIN) {
+            // SuperAdmin: Get all users EXCEPT other SuperAdmins
             scopedUsers = userRepository.findAll();
+            scopedUsers = scopedUsers.stream()
+                .filter(u -> u.getRole().getName() != RoleName.SUPER_ADMIN)
+                .collect(Collectors.toList());
         } else if (role == RoleName.ADMIN) {
             if (requester.getOrganization() == null) {
                 return List.of();
             }
+            // Admin: Get users in their organization EXCEPT SuperAdmins and other Admins
             scopedUsers = userRepository.findByOrganizationId(requester.getOrganization().getId());
+            scopedUsers = scopedUsers.stream()
+                .filter(u -> u.getRole().getName() != RoleName.SUPER_ADMIN && u.getRole().getName() != RoleName.ADMIN)
+                .collect(Collectors.toList());
         } else if (role == RoleName.RECEPTIONIST) {
             if (requester.getOrganization() == null) {
                 return List.of();
@@ -141,6 +151,24 @@ public class UserServiceImpl implements UserService {
             .stream()
             .map(this::toUserListResponse)
             .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<AdminUserResponse> getUsersByRole(String roleName) {
+        try {
+            RoleName role = RoleName.valueOf(roleName);
+            List<User> users = userRepository.findAll()
+                .stream()
+                .filter(u -> u.getRole().getName() == role && u.isActive())
+                .collect(Collectors.toList());
+
+            return users
+                .stream()
+                .map(this::toAdminUserResponse)
+                .collect(Collectors.toList());
+        } catch (IllegalArgumentException e) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Invalid role: " + roleName);
+        }
     }
 
     @Override
@@ -291,12 +319,38 @@ public class UserServiceImpl implements UserService {
         organizationRepository.save(organization);
     }
 
+    @Override
+    public List<UserListResponse> getUsersByOrganization(Long organizationId) {
+        Organization organization = organizationRepository.findById(organizationId)
+            .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Organization not found"));
+
+        List<User> users = userRepository.findByOrganizationId(organizationId);
+        return users.stream()
+            .map(this::toUserListResponse)
+            .collect(Collectors.toList());
+    }
+
     private UserListResponse toUserListResponse(User user) {
         return new UserListResponse(
             user.getId(),
             user.getFullName(),
             user.getEmail(),
             user.getRole().getName(),
+            user.isActive(),
+            user.getCreatedAt(),
+            user.getOrganization() != null ? user.getOrganization().getId() : null,
+            user.getOrganization() != null ? user.getOrganization().getName() : null
+        );
+    }
+
+    private AdminUserResponse toAdminUserResponse(User user) {
+        return new AdminUserResponse(
+            user.getId(),
+            user.getFullName(),
+            user.getEmail(),
+            user.getRole().getName(),
+            user.getOrganization() != null ? user.getOrganization().getId() : null,
+            user.getOrganization() != null ? user.getOrganization().getName() : null,
             user.isActive(),
             user.getCreatedAt()
         );
@@ -384,5 +438,124 @@ public class UserServiceImpl implements UserService {
     private User findUser(String email) {
         return userRepository.findWithRoleByEmailIgnoreCase(email)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "User not found"));
+    }
+
+    @Override
+    public UserMeResponse assignSupervisor(String requesterEmail, Long userId, Long supervisorId) {
+        User requester = findUser(requesterEmail);
+        User target = userRepository.findById(userId)
+            .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "User not found"));
+        User supervisor = userRepository.findById(supervisorId)
+            .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Supervisor not found"));
+
+        // Validate permission
+        validateSupervisorAssignmentPermission(requester, target, supervisor);
+
+        // Assign supervisor
+        target.setSupervisor(supervisor);
+        userRepository.save(target);
+
+        UserProfile profile = profileRepository.findByUserId(target.getId()).orElse(null);
+        return UserMapper.toMeResponse(target, profile);
+    }
+
+    private void validateSupervisorAssignmentPermission(User requester, User target, User supervisor) {
+        // Only SUPER_ADMIN and ADMIN can assign supervisors
+        RoleName requesterRole = requester.getRole().getName();
+
+        if (requesterRole != RoleName.SUPER_ADMIN && requesterRole != RoleName.ADMIN) {
+            throw new AppException(HttpStatus.FORBIDDEN, "Only admins can assign supervisors");
+        }
+
+        // Supervisor must have one of the allowed roles
+        RoleName supervisorRole = supervisor.getRole().getName();
+        Set<RoleName> allowedSupervisorRoles = Set.of(
+            RoleName.SUPER_ADMIN,
+            RoleName.ADMIN,
+            RoleName.RECEPTIONIST
+        );
+
+        if (!allowedSupervisorRoles.contains(supervisorRole)) {
+            throw new AppException(HttpStatus.BAD_REQUEST,
+                "Supervisor must have SUPER_ADMIN, ADMIN, or RECEPTIONIST role");
+        }
+
+        // Admin can only assign supervisors within their organization
+        if (requesterRole == RoleName.ADMIN) {
+            if (requester.getOrganization() == null || target.getOrganization() == null
+                || !requester.getOrganization().getId().equals(target.getOrganization().getId())) {
+                throw new AppException(HttpStatus.FORBIDDEN, "You can only manage users in your organization");
+            }
+            if (supervisor.getOrganization() == null
+                || !requester.getOrganization().getId().equals(supervisor.getOrganization().getId())) {
+                throw new AppException(HttpStatus.FORBIDDEN, "Supervisor must be from your organization");
+            }
+        }
+    }
+
+    @Override
+    public UserMeResponse createUserWithDefaultPassword(String requesterEmail, CreateUserWithDefaultPasswordRequest request) {
+        User requester = findUser(requesterEmail);
+        
+        // Validate permissions
+        if (requester.getRole().getName() != RoleName.SUPER_ADMIN && requester.getRole().getName() != RoleName.ADMIN) {
+            throw new AppException(HttpStatus.FORBIDDEN, "Only SUPER_ADMIN and ADMIN can create users");
+        }
+
+        // Check if user already exists
+        if (userRepository.findWithRoleByEmailIgnoreCase(request.email()).isPresent()) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Email already registered");
+        }
+
+        // Get the role
+        Role role = roleRepository.findByName(request.role())
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Role not found"));
+
+        // Get organization
+        Organization organization = null;
+        if (request.organizationId() != null) {
+            organization = organizationRepository.findById(request.organizationId())
+                    .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Organization not found"));
+            
+            // ADMIN can only create users in their organization
+            if (requester.getRole().getName() == RoleName.ADMIN) {
+                if (requester.getOrganization() == null || 
+                    !requester.getOrganization().getId().equals(organization.getId())) {
+                    throw new AppException(HttpStatus.FORBIDDEN, "You can only create users in your organization");
+                }
+            }
+        }
+
+        // Get default password based on role
+        String defaultPassword = getDefaultPassword(request.role());
+
+        // Create user
+        User user = new User();
+        user.setFullName(request.fullName());
+        user.setEmail(request.email());
+        user.setPasswordHash(passwordEncoder.encode(defaultPassword));
+        user.setRole(role);
+        user.setActive(true);
+        user.setOrganization(organization);
+
+        user = userRepository.save(user);
+
+        // Create user profile
+        UserProfile profile = new UserProfile();
+        profile.setUser(user);
+        profileRepository.save(profile);
+
+        UserProfile savedProfile = profileRepository.findByUserId(user.getId()).orElse(null);
+        return UserMapper.toMeResponse(user, savedProfile);
+    }
+
+    private String getDefaultPassword(RoleName role) {
+        return switch (role) {
+            case ADMIN -> "admin123";
+            case TRAINER -> "trainer123";
+            case RECEPTIONIST -> "receptionist123";
+            case USER -> "member123";
+            case SUPER_ADMIN -> "superadmin123";
+        };
     }
 }

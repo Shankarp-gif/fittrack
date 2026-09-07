@@ -53,8 +53,14 @@ export const PAGE_ACCESS: Record<string, GymRole[]> = {
   '/workouts': ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'USER'],
   '/progress': ['SUPER_ADMIN', 'ADMIN', 'USER', 'TRAINER'],
   '/goals': ['SUPER_ADMIN', 'ADMIN', 'USER', 'TRAINER'],
+  '/notifications': ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'RECEPTIONIST', 'USER'],
   '/user-management': ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'RECEPTIONIST'],
   '/settings': ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'RECEPTIONIST', 'USER'],
+  '/plans': ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'USER'],
+   '/hierarchy': ['SUPER_ADMIN', 'ADMIN'],
+   '/organizations': ['SUPER_ADMIN'],
+   '/organizations-hierarchy': ['SUPER_ADMIN'],
+   '/role-management': ['SUPER_ADMIN', 'ADMIN'],
 }
 
 /**
@@ -112,16 +118,20 @@ export function getNavItemsForRole(role: GymRole) {
       { icon: '💪', label: 'Workouts', path: '/workouts' },
       { icon: '📊', label: 'Progress', path: '/progress' },
       { icon: '🎯', label: 'Goals', path: '/goals' },
+      { icon: '🔔', label: 'Notifications', path: '/notifications' },
     ]
   }
 
   const baseItems = [
     { icon: '📊', label: 'Dashboard', path: getDashboardPathForRole(role) },
     { icon: '💪', label: 'My Dashboard', path: '/member-dashboard' },
+    { icon: '🔔', label: 'Notifications', path: '/notifications' },
   ]
 
   const roleSpecificItems: Record<GymRole, Array<{ icon: string; label: string; path: string }>> = {
     SUPER_ADMIN: [
+      { icon: '🏢', label: 'Org Hierarchy', path: '/organizations-hierarchy' },
+      { icon: '🏢', label: 'Organizations', path: '/organizations' },
       { icon: '👥', label: 'Members', path: '/members' },
       { icon: '💳', label: 'Fees', path: '/fees' },
       { icon: '📋', label: 'Attendance', path: '/attendance' },
@@ -129,6 +139,8 @@ export function getNavItemsForRole(role: GymRole) {
       { icon: '🏋️', label: 'Trainers', path: '/trainers' },
       { icon: '👫', label: 'Classes', path: '/classes' },
       { icon: '👤', label: 'User Management', path: '/user-management' },
+      { icon: '🛡️', label: 'Role Management', path: '/role-management' },
+      { icon: '🏢', label: 'Hierarchy', path: '/hierarchy' },
       { icon: '📊', label: 'Reports', path: '/reports' },
     ],
     ADMIN: [
@@ -139,6 +151,8 @@ export function getNavItemsForRole(role: GymRole) {
       { icon: '🏋️', label: 'Trainers', path: '/trainers' },
       { icon: '👫', label: 'Classes', path: '/classes' },
       { icon: '👤', label: 'User Management', path: '/user-management' },
+      { icon: '🛡️', label: 'Role Management', path: '/role-management' },
+      { icon: '🏢', label: 'Hierarchy', path: '/hierarchy' },
       { icon: '📊', label: 'Reports', path: '/reports' },
     ],
     TRAINER: [
@@ -147,6 +161,7 @@ export function getNavItemsForRole(role: GymRole) {
       { icon: '💪', label: 'Workouts', path: '/workouts' },
       { icon: '📊', label: 'Progress', path: '/progress' },
       { icon: '📅', label: 'Classes', path: '/classes' },
+      { icon: '📋', label: 'Workout Plans', path: '/plans' },
     ],
     RECEPTIONIST: [
       { icon: '📋', label: 'Check-In', path: '/attendance' },
@@ -161,4 +176,3 @@ export function getNavItemsForRole(role: GymRole) {
 
   return [...baseItems, ...(roleSpecificItems[role] || [])]
 }
-

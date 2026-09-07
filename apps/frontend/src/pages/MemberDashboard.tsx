@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   CheckCircle,
   Calendar,
@@ -8,9 +9,16 @@ import {
   Clock,
   Award,
   ArrowRight,
+  Building2,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../services/api'
+import { notificationsService } from '../services/notificationsService'
+import { showCenteredSuccessModal } from '../components/common/CenteredSuccessModal'
+import type { MembershipDetail } from '../types/fees'
+import type { AppNotificationItem } from '../types/notifications'
+import type { GymRole } from '../types/auth'
+import { getDashboardQuickActionsForRole } from '../utils/dashboardActions'
 import '../styles/MemberDashboard.css'
 
 interface MemberStats {
@@ -36,45 +44,116 @@ interface MemberStats {
   }
 }
 
+interface MemberDashboardNotification extends AppNotificationItem {
+  type: 'warning' | 'success' | 'info'
+}
+
 export function MemberDashboard() {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const [stats, setStats] = useState<MemberStats | null>(null)
-  const [showCheckInModal, setShowCheckInModal] = useState(false)
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: 'Membership Expiring Soon',
-      message: 'Your membership expires in 7 days. Renew now!',
-      type: 'warning',
-      read: false,
-    },
-    {
-      id: 2,
-      title: 'Great Attendance!',
-      message: 'You have attended 90% this month. Keep it up!',
-      type: 'success',
-      read: false,
-    },
-    {
-      id: 3,
-      title: 'Fee Payment Reminder',
-      message: 'Your monthly fee of ₹3,999 is due on September 5th',
-      type: 'info',
-      read: false,
-    },
-  ])
+  const [memberId, setMemberId] = useState<number | null>(null)
+  const [currentMembership, setCurrentMembership] = useState<MembershipDetail | null>(null)
+  const [processingMembershipAction, setProcessingMembershipAction] = useState(false)
+  const [organizationName, setOrganizationName] = useState('Your Organization')
+  const [notifications, setNotifications] = useState<MemberDashboardNotification[]>([])
+  const [notificationsError, setNotificationsError] = useState('')
 
   useEffect(() => {
-    if (user?.id) {
-      fetchMemberStats()
+    if (user?.email) {
+      fetchDashboardData()
     }
-  }, [user?.id])
+  }, [user?.email])
+
+  const mapMembershipDetail = (membership: any): MembershipDetail => {
+    const endDate = membership.endDate ? new Date(membership.endDate) : null
+    const now = new Date()
+    const msPerDay = 1000 * 60 * 60 * 24
+    const daysRemaining = endDate ? Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / msPerDay)) : 0
+
+    return {
+      id: membership.id,
+      memberId: membership.memberId,
+      memberName: membership.memberName,
+      planId: membership.membershipPlanId,
+      planName: membership.planName,
+      startDate: membership.startDate,
+      endDate: membership.endDate,
+      status: membership.status,
+      price: membership.price,
+      discountAmount: membership.discountAmount,
+      taxAmount: membership.taxAmount,
+      totalAmount: membership.totalAmount,
+      frozenUntil: membership.frozenUntil,
+      freezeCount: membership.freezeCount || 0,
+      daysRemaining,
+    }
+  }
+
+  const resolveMemberId = async (): Promise<number | null> => {
+    if (memberId) {
+      return memberId
+    }
+
+    if (!user?.email) {
+      return null
+    }
+
+    const response = await api.get('/api/memberships/my/member')
+    const member = response.data?.data || response.data
+    if (!member?.id) {
+      return null
+    }
+
+    setMemberId(member.id)
+    if (member.organizationName) {
+      setOrganizationName(member.organizationName)
+    } else if (member.organizationId) {
+      setOrganizationName(`Organization #${member.organizationId}`)
+    }
+    return member.id
+  }
+
+  const fetchCurrentMembership = async () => {
+    try {
+      const response = await api.get('/api/memberships/my').catch(() => ({ data: null }))
+      const payload = response.data?.data || response.data
+      const membership = Array.isArray(payload) ? payload[0] : null
+      const mappedMembership = membership ? mapMembershipDetail(membership) : null
+      setCurrentMembership(mappedMembership)
+
+      if (mappedMembership) {
+        setStats((prev) => prev ? {
+          ...prev,
+          currentMembership: {
+            planName: mappedMembership.planName,
+            daysRemaining: mappedMembership.daysRemaining,
+            endDate: mappedMembership.endDate,
+          },
+        } : prev)
+      }
+    } catch (error) {
+      console.error('Error fetching current membership:', error)
+      setCurrentMembership(null)
+    }
+  }
 
   const fetchMemberStats = async () => {
     try {
-      const response = await api.get(`/api/member/${user?.id}/stats`).catch(() => ({ data: null }))
-      const stats: MemberStats = response.data || {
-        currentMembership: { planName: '', daysRemaining: 0, endDate: '' },
+      const resolvedMemberId = await resolveMemberId()
+      if (!resolvedMemberId) {
+        setStats({
+          currentMembership: { planName: 'No Active Membership', daysRemaining: 0, endDate: '' },
+          thisMonthAttendance: { days: 0, percentage: 0 },
+          thisMonthStats: { workoutsCompleted: 0, personalTrainingSessions: 0, totalMinutes: 0, caloriesBurned: 0 },
+          nextFeePayment: { amount: 0, dueDate: '', status: 'PENDING' },
+        })
+        return
+      }
+
+      const response = await api.get(`/api/members/${resolvedMemberId}/stats`).catch(() => ({ data: null }))
+      const stats: MemberStats = response.data?.data || {
+        currentMembership: { planName: 'No Active Membership', daysRemaining: 0, endDate: '' },
         thisMonthAttendance: { days: 0, percentage: 0 },
         thisMonthStats: { workoutsCompleted: 0, personalTrainingSessions: 0, totalMinutes: 0, caloriesBurned: 0 },
         nextFeePayment: { amount: 0, dueDate: '', status: 'PENDING' },
@@ -83,7 +162,7 @@ export function MemberDashboard() {
     } catch (error) {
       console.error('Error fetching member stats:', error)
       setStats({
-        currentMembership: { planName: '', daysRemaining: 0, endDate: '' },
+        currentMembership: { planName: 'No Active Membership', daysRemaining: 0, endDate: '' },
         thisMonthAttendance: { days: 0, percentage: 0 },
         thisMonthStats: { workoutsCompleted: 0, personalTrainingSessions: 0, totalMinutes: 0, caloriesBurned: 0 },
         nextFeePayment: { amount: 0, dueDate: '', status: 'PENDING' },
@@ -91,73 +170,166 @@ export function MemberDashboard() {
     }
   }
 
-  const handleCheckIn = () => {
-    setShowCheckInModal(true)
+  const fetchDashboardData = async () => {
+    await Promise.all([fetchMemberStats(), fetchCurrentMembership(), fetchNotifications()])
   }
 
-  useEffect(() => {
-    if (!showCheckInModal) return
+  const mapNotificationType = (notification: AppNotificationItem): MemberDashboardNotification['type'] => {
+    const text = `${notification.title} ${notification.message}`.toLowerCase()
 
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setShowCheckInModal(false)
-      }
+    if (text.includes('renew') || text.includes('membership') || text.includes('fee') || text.includes('payment') || text.includes('due')) {
+      return 'warning'
     }
 
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [showCheckInModal])
+    if (text.includes('great') || text.includes('success') || text.includes('completed') || text.includes('achievement')) {
+      return 'success'
+    }
 
-  const handleMarkRead = (id: number) => {
-    setNotifications((prev) =>
-      prev.map((notif) => (notif.id === id ? { ...notif, read: true } : notif))
-    )
+    return 'info'
   }
+
+  const fetchNotifications = async () => {
+    try {
+      const items = await notificationsService.list()
+      setNotifications(
+        items.slice(0, 4).map((item) => ({
+          ...item,
+          type: mapNotificationType(item),
+        })),
+      )
+      setNotificationsError('')
+    } catch (error) {
+      console.error('Error fetching notifications:', error)
+      setNotifications([])
+      setNotificationsError('Unable to load notifications right now.')
+    }
+  }
+
+  const safeDate = (value?: string): string => {
+    if (!value) return '-'
+    const parsed = new Date(value)
+    if (Number.isNaN(parsed.getTime())) return '-'
+    return parsed.toLocaleDateString()
+  }
+
+  const handleMarkRead = async (id: number) => {
+    try {
+      await notificationsService.markAsRead(id)
+      setNotifications((prev) =>
+        prev.map((notif) => (notif.id === id ? { ...notif, read: true } : notif)),
+      )
+    } catch (error) {
+      console.error('Error marking notification as read:', error)
+      setNotificationsError('Unable to update notification right now.')
+    }
+  }
+
+  const handleRenewMembership = async () => {
+    if (!currentMembership?.id) {
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'No Membership Found',
+        message: 'There is no active membership available to renew.',
+        type: 'error',
+        duration: 3500,
+      })
+      return
+    }
+
+    setProcessingMembershipAction(true)
+    try {
+      await api.post(`/api/memberships/${currentMembership.id}/renew`)
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Renewed Successfully!',
+        message: 'Your membership has been renewed.',
+        type: 'success',
+        duration: 4000,
+      })
+      await fetchDashboardData()
+    } catch (error) {
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Renewal Failed',
+        message: error instanceof Error ? error.message : 'Failed to renew membership',
+        type: 'error',
+        duration: 4000,
+      })
+    } finally {
+      setProcessingMembershipAction(false)
+    }
+  }
+
+  const handleFreezeMembership = async () => {
+    if (!currentMembership?.id) return
+
+    setProcessingMembershipAction(true)
+    try {
+      await api.post(`/api/memberships/${currentMembership.id}/freeze`)
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Frozen Successfully!',
+        message: 'Your membership has been frozen.',
+        type: 'success',
+        duration: 4000,
+      })
+      await fetchDashboardData()
+    } catch (error) {
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Freeze Failed',
+        message: error instanceof Error ? error.message : 'Failed to freeze membership',
+        type: 'error',
+        duration: 4000,
+      })
+    } finally {
+      setProcessingMembershipAction(false)
+    }
+  }
+
+  const handleUnfreezeMembership = async () => {
+    if (!currentMembership?.id) return
+
+    setProcessingMembershipAction(true)
+    try {
+      await api.post(`/api/memberships/${currentMembership.id}/unfreeze`)
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Unfrozen Successfully!',
+        message: 'Your membership has been unfrozen.',
+        type: 'success',
+        duration: 4000,
+      })
+      await fetchDashboardData()
+    } catch (error) {
+      showCenteredSuccessModal({
+        isOpen: true,
+        title: 'Unfreeze Failed',
+        message: error instanceof Error ? error.message : 'Failed to unfreeze membership',
+        type: 'error',
+        duration: 4000,
+      })
+    } finally {
+      setProcessingMembershipAction(false)
+    }
+  }
+
+  const canFreezeMembership = currentMembership?.status === 'ACTIVE' || currentMembership?.status === 'EXPIRING_SOON'
+  const canUnfreezeMembership = currentMembership?.status === 'FROZEN'
+  const quickActions = getDashboardQuickActionsForRole((user?.role ?? 'USER') as GymRole)
 
   return (
     <div className="member-dashboard role-dashboard-page">
-      {showCheckInModal && (
-        <div
-          className="check-in-modal-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="check-in-success-title"
-          aria-describedby="check-in-success-message"
-          onClick={() => setShowCheckInModal(false)}
-        >
-          <div className="check-in-modal-card" onClick={(event) => event.stopPropagation()}>
-            <div className="check-in-modal-content">
-              <div className="check-in-success-icon">
-                <CheckCircle size={56} />
-              </div>
-              <h2 id="check-in-success-title" className="check-in-modal-title">
-                Check-in successful!
-              </h2>
-              <p id="check-in-success-message" className="check-in-modal-subtitle">
-                Welcome to the gym!
-              </p>
-              <button
-                className="check-in-modal-close"
-                onClick={() => setShowCheckInModal(false)}
-                autoFocus
-              >
-                Great
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Welcome Section */}
       <div className="welcome-section role-dashboard-header">
         <div>
           <h1 className="welcome-title role-dashboard-title">Welcome back, {user?.fullName}! 💪</h1>
           <p className="welcome-subtitle role-dashboard-subtitle">Track your fitness journey and stay motivated</p>
         </div>
-        <button className="check-in-btn" onClick={handleCheckIn}>
-          <CheckCircle size={20} />
-          Check In Now
-        </button>
+        <div className="org-name-pill" title={organizationName}>
+          <Building2 size={20} />
+          {organizationName}
+        </div>
       </div>
 
       {/* Quick Stats */}
@@ -194,7 +366,7 @@ export function MemberDashboard() {
             <div className="stat-info">
               <h3>Fee Payment</h3>
               <p className="stat-main">₹{stats.nextFeePayment.amount}</p>
-              <p className="stat-sub">Due: {new Date(stats.nextFeePayment.dueDate).toLocaleDateString()}</p>
+              <p className="stat-sub">Due: {safeDate(stats.nextFeePayment.dueDate)}</p>
             </div>
           </div>
 
@@ -326,6 +498,12 @@ export function MemberDashboard() {
             </div>
 
             <div className="notifications-list">
+              {notificationsError ? <p className="goal-status">{notificationsError}</p> : null}
+              {!notificationsError && notifications.length === 0 ? (
+                <div className="goal-item">
+                  <p className="goal-status">No notifications yet.</p>
+                </div>
+              ) : null}
               {notifications.map((notif) => (
                 <div key={notif.id} className={`notification-item ${notif.type} ${notif.read ? 'read' : ''}`}>
                   <div className="notif-icon">
@@ -336,18 +514,24 @@ export function MemberDashboard() {
                   <div className="notif-content">
                     <h4>{notif.title}</h4>
                     <p>{notif.message}</p>
+                    <p className="goal-status">{new Date(notif.createdAt).toLocaleString()}</p>
                   </div>
                   {!notif.read && (
                     <button
                       className="mark-read"
-                      onClick={() => handleMarkRead(notif.id)}
-                      aria-label={`Mark notification \"${notif.title}\" as read`}
+                      onClick={() => void handleMarkRead(notif.id)}
+                      aria-label={`Mark notification "${notif.title}" as read`}
                     >
                       ×
                     </button>
                   )}
                 </div>
               ))}
+            </div>
+            <div className="membership-actions">
+              <button className="btn-freeze" onClick={() => navigate('/notifications')}>
+                View All Notifications
+              </button>
             </div>
           </div>
 
@@ -358,26 +542,17 @@ export function MemberDashboard() {
             </div>
 
             <div className="action-buttons">
-              <button className="action-btn primary">
-                <Calendar size={18} />
-                Book PT Session
-                <ArrowRight size={16} />
-              </button>
-              <button className="action-btn">
-                <TrendingUp size={18} />
-                View Progress
-                <ArrowRight size={16} />
-              </button>
-              <button className="action-btn">
-                <Dumbbell size={18} />
-                Workout Programs
-                <ArrowRight size={16} />
-              </button>
-              <button className="action-btn">
-                <Award size={18} />
-                View Achievements
-                <ArrowRight size={16} />
-              </button>
+              {quickActions.map((action, index) => (
+                <button
+                  key={action.id}
+                  className={`member-quick-action-btn ${index === 0 ? 'member-quick-action-btn-primary' : ''}`}
+                  onClick={() => navigate(action.path)}
+                >
+                  <span>{action.icon}</span>
+                  <span className="action-label">{action.label}</span>
+                  <ArrowRight size={16} />
+                </button>
+              ))}
             </div>
           </div>
 
@@ -395,16 +570,41 @@ export function MemberDashboard() {
                 </div>
                 <div className="detail-row">
                   <span>End Date</span>
-                  <strong>{new Date(stats.currentMembership.endDate).toLocaleDateString()}</strong>
+                  <strong>{safeDate(stats.currentMembership.endDate)}</strong>
                 </div>
                 <div className="detail-row">
                   <span>Days Remaining</span>
                   <strong className="highlight">{stats.currentMembership.daysRemaining} days</strong>
                 </div>
+                {currentMembership && (
+                  <>
+                    <div className="detail-row">
+                      <span>Status</span>
+                      <strong>{currentMembership.status.replaceAll('_', ' ')}</strong>
+                    </div>
+                    {currentMembership.frozenUntil && currentMembership.status === 'FROZEN' && (
+                      <div className="detail-row">
+                        <span>Frozen Until</span>
+                        <strong>{safeDate(currentMembership.frozenUntil)}</strong>
+                      </div>
+                    )}
+                  </>
+                )}
 
                 <div className="membership-actions">
-                  <button className="btn-renew">Renew Membership</button>
-                  <button className="btn-freeze">Freeze Membership</button>
+                  <button className="btn-renew" onClick={handleRenewMembership} disabled={processingMembershipAction || !currentMembership?.id}>
+                    {processingMembershipAction ? 'Processing...' : 'Renew Membership'}
+                  </button>
+                  {canFreezeMembership && (
+                    <button className="btn-freeze" onClick={handleFreezeMembership} disabled={processingMembershipAction}>
+                      Freeze Membership
+                    </button>
+                  )}
+                  {canUnfreezeMembership && (
+                    <button className="btn-freeze" onClick={handleUnfreezeMembership} disabled={processingMembershipAction}>
+                      Unfreeze Membership
+                    </button>
+                  )}
                 </div>
               </div>
             )}

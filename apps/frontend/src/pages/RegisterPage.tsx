@@ -1,14 +1,21 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import axios from 'axios'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import type { FitnessLevel, GoalType } from '../types/auth'
 
+interface Organization {
+  id: number
+  name: string
+}
+
 export function RegisterPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
   const [error, setError] = useState('')
+  const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [loading, setLoading] = useState(true)
   const [form, setForm] = useState({
     fullName: '',
     email: '',
@@ -17,13 +24,44 @@ export function RegisterPage() {
     address: '',
     fitnessLevel: 'BEGINNER' as FitnessLevel,
     goal: 'GENERAL_HEALTH' as GoalType,
+    organizationId: '',
   })
+
+  useEffect(() => {
+    fetchOrganizations()
+  }, [])
+
+  async function fetchOrganizations() {
+    try {
+      setLoading(true)
+      const response = await axios.get('/api/auth/organizations')
+      setOrganizations(response.data)
+      if (response.data.length > 0) {
+        setForm(prev => ({ ...prev, organizationId: response.data[0].id.toString() }))
+      }
+    } catch (err) {
+      console.error('Failed to fetch organizations:', err)
+      setError('Failed to load organizations. Please refresh and try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
+
+    if (!form.organizationId) {
+      setError('Please select an organization')
+      return
+    }
+
     try {
-      await register({ ...form, email: form.email.trim().toLowerCase() })
+      await register({
+        ...form,
+        email: form.email.trim().toLowerCase(),
+        organizationId: parseInt(form.organizationId, 10),
+      })
       navigate('/onboarding')
     } catch (err) {
       if (axios.isAxiosError(err)) {
@@ -58,10 +96,33 @@ export function RegisterPage() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <p>Loading organizations...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
         <h1>Create your account</h1>
+        <label>Organization *</label>
+        <select
+          value={form.organizationId}
+          onChange={(e) => setForm({ ...form, organizationId: e.target.value })}
+          required
+        >
+          <option value="">Select an organization</option>
+          {organizations.map((org) => (
+            <option key={org.id} value={org.id}>
+              {org.name}
+            </option>
+          ))}
+        </select>
         <label>Name</label>
         <input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} required />
         <label>Email</label>

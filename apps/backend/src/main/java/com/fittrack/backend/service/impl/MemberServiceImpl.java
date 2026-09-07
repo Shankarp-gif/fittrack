@@ -11,6 +11,7 @@ import com.fittrack.backend.repository.BranchRepository;
 import com.fittrack.backend.repository.MemberRepository;
 import com.fittrack.backend.repository.OrganizationRepository;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -84,6 +85,20 @@ public class MemberServiceImpl implements MemberService {
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<MemberDTO> findMemberByEmail(String email) {
+        return memberRepository.findFirstByEmailIgnoreCaseAndActiveTrue(email)
+            .map(this::toDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<MemberDTO> findMemberByOrganizationAndEmail(Long organizationId, String email) {
+        return memberRepository.findFirstByOrganizationIdAndEmailIgnoreCaseAndActiveTrue(organizationId, email)
+            .map(this::toDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Page<MemberDTO> listMembers(Long organizationId, Long branchId, Pageable pageable) {
         return memberRepository.findByOrganizationIdAndBranchId(organizationId, branchId, pageable)
             .map(this::toDTO);
@@ -133,7 +148,9 @@ public class MemberServiceImpl implements MemberService {
         return MemberDTO.builder()
             .id(member.getId())
             .organizationId(member.getOrganization() != null ? member.getOrganization().getId() : null)
+            .organizationName(member.getOrganization() != null ? member.getOrganization().getName() : null)
             .branchId(member.getBranch() != null ? member.getBranch().getId() : null)
+            .branchName(member.getBranch() != null ? member.getBranch().getName() : null)
             .memberIdNumber(member.getMemberIdNumber())
             .fullName(member.getFullName())
             .email(member.getEmail())

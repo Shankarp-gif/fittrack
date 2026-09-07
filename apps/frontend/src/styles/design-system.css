@@ -79,11 +79,11 @@
   --bg-tertiary: #f0f3f9;
   --bg-hover: #e5ecf5;
 
-  /* HIGH CONTRAST TEXT FOR LIGHT MODE */
-  --text-primary: #1a202c;
-  --text-secondary: #2d3748;
-  --text-tertiary: #4a5568;
-  --text-muted: #718096;
+  /* HIGH CONTRAST TEXT FOR LIGHT MODE - Maximum readability */
+  --text-primary: #0a0e27;
+  --text-secondary: #1a202c;
+  --text-tertiary: #2d3748;
+  --text-muted: #4a5568;
 
   --accent-primary: #0088cc;
   --accent-primary-hover: #006699;
@@ -205,12 +205,25 @@ button {
   font-size: 14px;
   border-radius: var(--radius-lg);
   box-shadow: 0 4px 12px rgba(0, 217, 255, 0.3);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root[data-theme='light'] .btn-primary {
+  background: #0088cc;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3);
 }
 
 .btn-primary:hover {
   background: var(--accent-primary-hover);
   box-shadow: 0 6px 20px rgba(0, 217, 255, 0.4);
   transform: translateY(-2px);
+}
+
+:root[data-theme='light'] .btn-primary:hover {
+  background: #006699;
+  box-shadow: 0 6px 20px rgba(0, 136, 204, 0.4);
 }
 
 .btn-primary:active {
@@ -226,11 +239,26 @@ button {
   font-size: 14px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color-light);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root[data-theme='light'] .btn-secondary {
+  background: #f0f3f9;
+  color: #0a0e27;
+  border-color: #cbd5e0;
 }
 
 .btn-secondary:hover {
   background: var(--bg-hover);
   border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+:root[data-theme='light'] .btn-secondary:hover {
+  background: #e5ecf5;
+  border-color: #0088cc;
+  color: #0088cc;
 }
 
 /* Ghost Button */
@@ -241,11 +269,22 @@ button {
   font-weight: 500;
   font-size: 13px;
   border-radius: var(--radius-md);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root[data-theme='light'] .btn-ghost {
+  color: #1a202c;
 }
 
 .btn-ghost:hover {
   background: var(--bg-tertiary);
   color: var(--accent-primary);
+}
+
+:root[data-theme='light'] .btn-ghost:hover {
+  background: #f0f3f9;
+  color: #0088cc;
 }
 
 /* Icon Button */
@@ -258,11 +297,21 @@ button {
   background: transparent;
   color: var(--text-secondary);
   border-radius: var(--radius-lg);
+  text-rendering: optimizeLegibility;
+}
+
+:root[data-theme='light'] .btn-icon {
+  color: #1a202c;
 }
 
 .btn-icon:hover {
   background: var(--bg-tertiary);
   color: var(--text-primary);
+}
+
+:root[data-theme='light'] .btn-icon:hover {
+  background: #f0f3f9;
+  color: #0a0e27;
 }
 
 /* Small Button */
@@ -284,10 +333,27 @@ input, textarea, select {
   padding: 10px 12px;
   font-size: 14px;
   transition: all var(--transition-base);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root[data-theme='light'] input,
+:root[data-theme='light'] textarea,
+:root[data-theme='light'] select {
+  background: #ffffff;
+  color: #0a0e27;
+  border-color: #cbd5e0;
 }
 
 input::placeholder, textarea::placeholder {
   color: var(--text-tertiary);
+  opacity: 0.7;
+}
+
+:root[data-theme='light'] input::placeholder,
+:root[data-theme='light'] textarea::placeholder {
+  color: #2d3748;
+  opacity: 0.8;
 }
 
 input:focus, textarea:focus, select:focus {
@@ -295,6 +361,16 @@ input:focus, textarea:focus, select:focus {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px rgba(0, 217, 255, 0.1);
   background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+:root[data-theme='light'] input:focus,
+:root[data-theme='light'] textarea:focus,
+:root[data-theme='light'] select:focus {
+  border-color: #0088cc;
+  box-shadow: 0 0 0 3px rgba(0, 136, 204, 0.1);
+  background: #ffffff;
+  color: #0a0e27;
 }
 
 input:disabled, textarea:disabled, select:disabled {
@@ -302,6 +378,13 @@ input:disabled, textarea:disabled, select:disabled {
   color: var(--text-tertiary);
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+:root[data-theme='light'] input:disabled,
+:root[data-theme='light'] textarea:disabled,
+:root[data-theme='light'] select:disabled {
+  background: #f0f3f9;
+  color: #2d3748;
 }
 
 /* Form Group */
