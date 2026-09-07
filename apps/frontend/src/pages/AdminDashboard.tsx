@@ -39,6 +39,16 @@ export function AdminDashboard() {
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([])
   const [loading, setLoading] = useState(true)
+  const defaultStats: AdminStats = {
+    totalMembers: 0,
+    activeMembers: 0,
+    expiredMembers: 0,
+    totalRevenue: 0,
+    pendingCollections: 0,
+    todayCheckIns: 0,
+    weeklyActiveMembers: 0,
+    monthlyGrowth: 0,
+  }
 
   useEffect(() => {
     fetchDashboardData()
@@ -49,36 +59,39 @@ export function AdminDashboard() {
     try {
       // Fetch stats from API
       const statsResponse = await api.get('/api/admin/stats').catch(() => ({ data: null }))
-      const stats: AdminStats = statsResponse.data || {
-        totalMembers: 0,
-        activeMembers: 0,
-        expiredMembers: 0,
-        totalRevenue: 0,
-        pendingCollections: 0,
-        todayCheckIns: 0,
-        weeklyActiveMembers: 0,
-        monthlyGrowth: 0,
+      const rawStats = statsResponse.data?.data || statsResponse.data || {}
+      const stats: AdminStats = {
+        totalMembers: Number(rawStats.totalMembers) || 0,
+        activeMembers: Number(rawStats.activeMembers) || 0,
+        expiredMembers: Number(rawStats.expiredMembers) || 0,
+        totalRevenue: Number(rawStats.totalRevenue) || 0,
+        pendingCollections: Number(rawStats.pendingCollections) || 0,
+        todayCheckIns: Number(rawStats.todayCheckIns) || 0,
+        weeklyActiveMembers: Number(rawStats.weeklyActiveMembers) || 0,
+        monthlyGrowth: Number(rawStats.monthlyGrowth) || 0,
       }
 
       // Fetch recent activities from API
       const activitiesResponse = await api.get('/api/admin/recent-activities').catch(() => ({ data: [] }))
-      const activities: RecentActivity[] = activitiesResponse.data || []
+      const rawActivities = activitiesResponse.data?.data || activitiesResponse.data || []
+      const activities: RecentActivity[] = Array.isArray(rawActivities)
+        ? rawActivities.map((activity: any) => ({
+          id: Number(activity.id) || 0,
+          memberName: String(activity.memberName || activity.name || 'Member'),
+          action: String(activity.action || activity.description || ''),
+          timestamp: String(activity.timestamp || activity.createdAt || ''),
+          type: activity.type === 'enrollment' || activity.type === 'payment' || activity.type === 'attendance' || activity.type === 'alert'
+            ? activity.type
+            : 'attendance',
+        }))
+        : []
 
       setStats(stats)
       setRecentActivities(activities)
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
       // Show default empty state
-      setStats({
-        totalMembers: 0,
-        activeMembers: 0,
-        expiredMembers: 0,
-        totalRevenue: 0,
-        pendingCollections: 0,
-        todayCheckIns: 0,
-        weeklyActiveMembers: 0,
-        monthlyGrowth: 0,
-      })
+      setStats(defaultStats)
       setRecentActivities([])
     } finally {
       setLoading(false)
@@ -168,7 +181,7 @@ export function AdminDashboard() {
             <h3>Total Members</h3>
             <div className="kpi-value">
               {stats?.totalMembers ?? 0}
-              <span className="kpi-label">Active: {stats?.activeMembers}</span>
+              <span className="kpi-label">Active: {stats?.activeMembers ?? 0}</span>
             </div>
           </div>
         </div>
@@ -180,7 +193,7 @@ export function AdminDashboard() {
           <div className="kpi-content">
             <h3>Total Revenue</h3>
             <div className="kpi-value">
-              ₹{stats?.totalRevenue.toLocaleString()}
+              ₹{(stats?.totalRevenue ?? 0).toLocaleString()}
               <span className="kpi-label">This Month</span>
             </div>
           </div>
@@ -193,8 +206,8 @@ export function AdminDashboard() {
           <div className="kpi-content">
             <h3>Pending Collections</h3>
             <div className="kpi-value">
-              ₹{stats?.pendingCollections.toLocaleString()}
-              <span className="kpi-label">{stats?.expiredMembers} Members</span>
+              ₹{(stats?.pendingCollections ?? 0).toLocaleString()}
+              <span className="kpi-label">{stats?.expiredMembers ?? 0} Members</span>
             </div>
           </div>
         </div>
@@ -206,7 +219,7 @@ export function AdminDashboard() {
           <div className="kpi-content">
             <h3>Monthly Growth</h3>
             <div className="kpi-value">
-              {stats?.monthlyGrowth}%
+              {stats?.monthlyGrowth ?? 0}%
               <span className="kpi-label">New members this month</span>
             </div>
           </div>
@@ -219,7 +232,7 @@ export function AdminDashboard() {
           <div className="kpi-content">
             <h3>Today's Check-ins</h3>
             <div className="kpi-value">
-              {stats?.todayCheckIns}
+              {stats?.todayCheckIns ?? 0}
               <span className="kpi-label">Active members today</span>
             </div>
           </div>
@@ -232,7 +245,7 @@ export function AdminDashboard() {
           <div className="kpi-content">
             <h3>Weekly Active</h3>
             <div className="kpi-value">
-              {stats?.weeklyActiveMembers}
+              {stats?.weeklyActiveMembers ?? 0}
               <span className="kpi-label">Members this week</span>
             </div>
           </div>
