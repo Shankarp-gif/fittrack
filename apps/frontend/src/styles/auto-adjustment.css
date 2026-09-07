@@ -85,8 +85,7 @@ small, .small-text {
 
 /* Primary Button - Ensure text is readable */
 .btn-primary, .primary-btn,
-button[type="submit"],
-.action-btn {
+button[type="submit"] {
   color: var(--bg-primary) !important;
   font-weight: 700;
   text-rendering: optimizeLegibility;
@@ -97,8 +96,7 @@ button[type="submit"],
 /* Light mode: Primary button text */
 :root[data-theme='light'] .btn-primary,
 :root[data-theme='light'] .primary-btn,
-:root[data-theme='light'] button[type="submit"],
-:root[data-theme='light'] .action-btn {
+:root[data-theme='light'] button[type="submit"] {
   color: #ffffff !important;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }

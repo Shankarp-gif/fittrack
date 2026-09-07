@@ -45,25 +45,25 @@ public class UserController {
     }
 
     @GetMapping("/all")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','RECEPTIONIST','TRAINER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','GYM_MAINTENANCE_MANAGER')")
     public List<UserListResponse> getAllUsers(Authentication authentication) {
         return userService.getAllUsers(authentication.getName());
     }
 
     @PostMapping("/change-role")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','RECEPTIONIST','TRAINER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','GYM_MAINTENANCE_MANAGER')")
     public UserMeResponse changeUserRole(Authentication authentication, @Valid @RequestBody ChangeRoleRequest request) {
         return userService.changeUserRole(authentication.getName(), request);
     }
 
     @DeleteMapping("/{userId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','RECEPTIONIST','TRAINER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','GYM_MAINTENANCE_MANAGER')")
     public void deleteUser(Authentication authentication, @PathVariable Long userId) {
         userService.deleteUser(authentication.getName(), userId);
     }
 
     /**
-     * Assign a supervisor to a user (only for SUPER_ADMIN, ADMIN, RECEPTIONIST roles)
+     * Assign a supervisor to a user (only for SUPER_ADMIN, ADMIN, GYM_MAINTENANCE_MANAGER roles)
      * @param userId The user to assign a supervisor to
      * @param supervisorId The supervisor user ID
      */

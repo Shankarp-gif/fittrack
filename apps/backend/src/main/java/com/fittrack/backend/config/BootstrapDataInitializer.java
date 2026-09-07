@@ -29,7 +29,7 @@ public class BootstrapDataInitializer {
             // No hardcoded users or credentials
             ensureRole(roleRepository, RoleName.USER);
             ensureRole(roleRepository, RoleName.TRAINER);
-            ensureRole(roleRepository, RoleName.RECEPTIONIST);
+            ensureRole(roleRepository, RoleName.GYM_MAINTENANCE_MANAGER);
             ensureRole(roleRepository, RoleName.ADMIN);
             ensureRole(roleRepository, RoleName.SUPER_ADMIN);
         };

@@ -22,6 +22,10 @@
   margin-left: 80px;
 }
 
+.premium-layout.sidebar-collapsed .topnav {
+  left: 80px;
+}
+
 .content-wrapper {
   min-height: calc(100vh - var(--topnav-height));
   padding: var(--spacing-2xl);
@@ -85,6 +89,10 @@
     margin-left: 70px;
   }
 
+  .premium-layout.sidebar-collapsed .topnav {
+    left: 70px;
+  }
+
   .content-wrapper {
     padding: var(--spacing-lg);
   }
@@ -110,6 +118,10 @@
 
   .premium-layout.sidebar-collapsed .main-content {
     margin-left: 60px;
+  }
+
+  .premium-layout.sidebar-collapsed .topnav {
+    left: 60px;
   }
 
   .content-wrapper {

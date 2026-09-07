@@ -3,11 +3,14 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Search, Plus, Edit2, Trash2, Eye, CreditCard } from 'lucide-react'
 import { membersService } from '../services/membersService'
 import type { Member } from '../types/members'
+import type { GymRole } from '../types/auth'
+import { useAuth } from '../context/AuthContext'
 import { showCenteredSuccessModal } from '../components/common/CenteredSuccessModal'
 import '../styles/MembersPage.css'
 
 export function MembersPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(false)
@@ -20,6 +23,12 @@ export function MembersPage() {
   const [sortDir, setSortDir] = useState('DESC')
   const appliedSearchQuery = searchParams.get('search')?.trim() ?? ''
   const statusFilter = (searchParams.get('status') ?? '').trim().toUpperCase()
+  const role = (user?.role ?? 'ADMIN') as GymRole
+
+  const canCreateMember = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'GYM_MAINTENANCE_MANAGER'
+  const canEditMember = canCreateMember
+  const canAssignMembership = canCreateMember
+  const canDeleteMember = role === 'SUPER_ADMIN' || role === 'ADMIN'
 
   useEffect(() => {
     setSearchInput(appliedSearchQuery)
@@ -178,27 +187,34 @@ export function MembersPage() {
             </p>
           ) : null}
         </div>
-        <button className="add-btn" onClick={handleAddMember}>
-          <Plus size={20} />
-          New Member
-        </button>
+        {canCreateMember ? (
+          <button className="add-btn" onClick={handleAddMember}>
+            <Plus size={20} />
+            New Member
+          </button>
+        ) : null}
       </div>
 
-      <div className="filter-section role-dashboard-card">
-        <div className="search-container">
-          <Search size={20} className="search-icon" />
+      <div className="members-filter-section role-dashboard-card">
+        <form
+          className="members-search-container"
+          onSubmit={(event) => {
+            event.preventDefault()
+            handleSearch()
+          }}
+        >
+          <Search size={20} className="members-search-icon" />
           <input
             type="text"
             placeholder="Search by name, email, or phone..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-            className="search-input"
+            className="members-search-input"
           />
-          <button onClick={handleSearch} className="search-btn">
+          <button type="submit" className="members-search-btn">
             Search
           </button>
-        </div>
+        </form>
 
         <div className="filter-options">
           <div className="sort-group">
@@ -278,35 +294,41 @@ export function MembersPage() {
                         </span>
                       </td>
                       <td>{formatDate(member.createdAt)}</td>
-                       <td className="actions-cell">
+                        <td className="actions-cell">
                          <button
-                           className="action-btn view-btn"
+                            className="member-action-btn member-view-btn"
                            title="View Details"
                            onClick={() => handleViewMember(member.id)}
                          >
                            <Eye size={16} />
                          </button>
-                         <button
-                           className="action-btn edit-btn"
-                           title="Edit"
-                           onClick={() => handleEditMember(member.id)}
-                         >
-                           <Edit2 size={16} />
-                         </button>
-                          <button
-                            className="action-btn membership-btn"
-                            title="Assign Membership"
-                            onClick={() => handleAssignMembership(member.id)}
-                          >
-                            <CreditCard size={16} />
-                          </button>
-                         <button
-                           className="action-btn delete-btn"
-                           title="Delete"
-                           onClick={() => handleDelete(member.id)}
-                         >
-                           <Trash2 size={16} />
-                         </button>
+                         {canEditMember ? (
+                           <button
+                             className="member-action-btn member-edit-btn"
+                             title="Edit"
+                             onClick={() => handleEditMember(member.id)}
+                           >
+                             <Edit2 size={16} />
+                           </button>
+                         ) : null}
+                         {canAssignMembership ? (
+                           <button
+                             className="member-action-btn member-membership-btn"
+                             title="Assign Membership"
+                             onClick={() => handleAssignMembership(member.id)}
+                           >
+                             <CreditCard size={16} />
+                           </button>
+                         ) : null}
+                         {canDeleteMember ? (
+                           <button
+                             className="member-action-btn member-delete-btn"
+                             title="Delete"
+                             onClick={() => handleDelete(member.id)}
+                           >
+                             <Trash2 size={16} />
+                           </button>
+                         ) : null}
                        </td>
                     </tr>
                   ))}

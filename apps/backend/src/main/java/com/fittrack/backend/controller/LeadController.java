@@ -35,7 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/leads")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','RECEPTIONIST')")
+@PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','GYM_MAINTENANCE_MANAGER')")
 public class LeadController {
 
     private final LeadService leadService;

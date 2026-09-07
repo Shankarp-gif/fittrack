@@ -3,7 +3,7 @@ package com.fittrack.backend.entity.enums;
 public enum RoleName {
     USER,
     TRAINER,
-    RECEPTIONIST,
+    GYM_MAINTENANCE_MANAGER,
     ADMIN,
     SUPER_ADMIN
 }

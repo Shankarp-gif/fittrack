@@ -29,6 +29,9 @@ public class User extends BaseEntity {
     @Column(nullable = false, unique = true, length = 180)
     private String email;
 
+    @Column(name = "employee_id_number", unique = true, length = 50)
+    private String employeeIdNumber;
+
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 

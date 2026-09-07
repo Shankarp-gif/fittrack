@@ -24,6 +24,7 @@ import com.fittrack.backend.repository.OrganizationRepository;
 import com.fittrack.backend.repository.UserRepository;
 import com.fittrack.backend.repository.BranchRepository;
 import com.fittrack.backend.repository.MemberRepository;
+import com.fittrack.backend.util.MemberIdGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -49,6 +50,7 @@ public class LeadService {
     private final MemberRepository memberRepository;
     private final MemberService memberService;
     private final MembershipService membershipService;
+    private final MemberIdGenerator memberIdGenerator;
 
     /**
      * Create a new lead
@@ -184,7 +186,7 @@ public class LeadService {
         }
 
         // Create member from lead
-        String memberIdNumber = generateMemberIdNumber(organizationId, request.getMemberIdPrefix());
+        String memberIdNumber = memberIdGenerator.generateMemberId();
 
         Member member = new Member();
         member.setOrganization(lead.getOrganization());
@@ -356,10 +358,6 @@ public class LeadService {
             .build();
     }
 
-    private String generateMemberIdNumber(Long organizationId, String prefix) {
-        long count = memberRepository.countByOrganizationId(organizationId);
-        return prefix + String.format("%05d", count + 1);
-    }
 
     private LocalDateTime convertInstantToLocalDateTime(java.time.Instant instant) {
         if (instant == null) return null;

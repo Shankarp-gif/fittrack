@@ -60,6 +60,8 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
     ? 'Member'
     : user?.role === 'SUPER_ADMIN'
       ? 'Super Admin'
+      : user?.role === 'GYM_MAINTENANCE_MANAGER'
+        ? 'Gym Maintenance Manager'
       : user?.role
 
   return (

@@ -11,6 +11,7 @@ export function ReportsPage() {
   const [attendanceReport, setAttendanceReport] = useState<AttendanceReport | null>(null)
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
+  const [showExportMenu, setShowExportMenu] = useState(false)
 
   useEffect(() => {
     fetchReports()
@@ -111,21 +112,32 @@ export function ReportsPage() {
             <RefreshCw size={20} />
             Refresh
           </button>
-          <div className="export-dropdown">
-            <button className="export-btn">
+          <div className="export-dropdown" onMouseLeave={() => setShowExportMenu(false)}>
+            <button
+              className="export-btn"
+              onClick={() => setShowExportMenu((current) => !current)}
+              aria-expanded={showExportMenu}
+              aria-haspopup="menu"
+            >
               <Download size={20} />
               Export
             </button>
-            <div className="dropdown-menu">
+            <div className={`dropdown-menu ${showExportMenu ? 'open' : ''}`} role="menu">
               <button
-                onClick={() => handleExport('pdf')}
+                onClick={() => {
+                  void handleExport('pdf')
+                  setShowExportMenu(false)
+                }}
                 disabled={exporting}
                 className="dropdown-item"
               >
                 Export as PDF
               </button>
               <button
-                onClick={() => handleExport('excel')}
+                onClick={() => {
+                  void handleExport('excel')
+                  setShowExportMenu(false)
+                }}
                 disabled={exporting}
                 className="dropdown-item"
               >

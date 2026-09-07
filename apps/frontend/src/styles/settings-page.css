@@ -1,0 +1,90 @@
+.settings-page-wrap {
+  max-width: 1200px;
+}
+
+.settings-hero {
+  background: linear-gradient(135deg, rgba(0, 217, 255, 0.08), rgba(124, 58, 237, 0.08));
+}
+
+.settings-hero-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.settings-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.settings-section {
+  border-top: 2px solid rgba(0, 217, 255, 0.2);
+}
+
+.settings-grid {
+  gap: 16px;
+}
+
+.settings-status-card {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  min-height: 120px;
+}
+
+.settings-checkbox-row {
+  grid-column: 1 / -1;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.settings-checkbox-row span {
+  display: grid;
+  gap: 4px;
+}
+
+.settings-field-help {
+  display: block;
+  font-size: 12px;
+}
+
+.settings-input-error {
+  border-color: var(--status-error) !important;
+}
+
+.settings-presets {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.settings-preset-active {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: rgba(0, 217, 255, 0.1);
+}
+
+.settings-save-row {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 960px) {
+  .settings-hero-head {
+    flex-direction: column;
+  }
+
+  .settings-page-wrap {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

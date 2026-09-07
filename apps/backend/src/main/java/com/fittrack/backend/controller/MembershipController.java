@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/memberships")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST','USER')")
+@PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER','USER')")
 public class MembershipController {
 
     private final MembershipService membershipService;
@@ -42,7 +42,7 @@ public class MembershipController {
 
     // Membership endpoints
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST','USER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER','USER')")
     public ResponseEntity<ApiResponse<MembershipDTO>> createMembership(
         @Valid @RequestBody CreateMembershipRequest request,
         Authentication authentication) {
@@ -60,14 +60,14 @@ public class MembershipController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER')")
     public ResponseEntity<ApiResponse<MembershipDTO>> getMembership(@PathVariable Long id) {
         MembershipDTO membership = membershipService.getMembership(id);
         return ResponseEntity.ok(ApiResponse.success(membership));
     }
 
     @PostMapping("/{id}/renew")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST','USER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER','USER')")
     public ResponseEntity<ApiResponse<MembershipDTO>> renewMembership(
         @PathVariable Long id,
         Authentication authentication) {
@@ -77,7 +77,7 @@ public class MembershipController {
     }
 
     @PostMapping("/{id}/freeze")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST','USER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER','USER')")
     public ResponseEntity<ApiResponse<Void>> freezeMembership(
         @PathVariable Long id,
         @RequestBody(required = false) Integer days,
@@ -88,7 +88,7 @@ public class MembershipController {
     }
 
     @PostMapping("/{id}/unfreeze")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST','USER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER','USER')")
     public ResponseEntity<ApiResponse<Void>> unfreezeMembership(
         @PathVariable Long id,
         Authentication authentication) {
@@ -98,7 +98,7 @@ public class MembershipController {
     }
 
     @GetMapping("/expiring-soon")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER')")
     public ResponseEntity<ApiResponse<List<MembershipDTO>>> getExpiringMemberships() {
         List<MembershipDTO> memberships = membershipService.getExpiringMemberships(7);
         return ResponseEntity.ok(ApiResponse.success(memberships));
@@ -131,7 +131,7 @@ public class MembershipController {
     }
 
     @GetMapping("/member/{memberId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER')")
     public ResponseEntity<ApiResponse<MembershipDTO>> getMemberCurrentMembership(
         @PathVariable Long memberId,
         Authentication authentication) {
@@ -214,7 +214,7 @@ public class MembershipController {
 
     // Membership Plan endpoints
     @PostMapping("/plans")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER')")
     public ResponseEntity<ApiResponse<MembershipPlanDTO>> createPlan(
         @Valid @RequestBody MembershipPlanDTO request,
         Authentication authentication) {
@@ -238,7 +238,7 @@ public class MembershipController {
     }
 
     @PutMapping("/plans/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER')")
     public ResponseEntity<ApiResponse<MembershipPlanDTO>> updatePlan(
         @PathVariable Long id,
         @Valid @RequestBody MembershipPlanDTO request) {
@@ -247,7 +247,7 @@ public class MembershipController {
     }
 
     @DeleteMapping("/plans/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER')")
     public ResponseEntity<ApiResponse<Void>> deletePlan(@PathVariable Long id) {
         membershipPlanService.deletePlan(id);
         return ResponseEntity.ok(ApiResponse.success("Plan deleted successfully", null));

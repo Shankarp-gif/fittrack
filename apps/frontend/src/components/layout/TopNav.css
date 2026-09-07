@@ -23,6 +23,11 @@
   max-width: 500px;
 }
 
+.topnav-search-placeholder-spacer {
+  width: 100%;
+  min-height: 40px;
+}
+
 .search-trigger {
   width: 100%;
   display: flex;
@@ -224,14 +229,31 @@
 @media (max-width: 480px) {
   .topnav {
     left: 60px;
+    gap: var(--spacing-sm);
+    padding: 0 8px;
   }
 
   .topnav-left {
-    display: none;
+    max-width: 100%;
   }
 
   .topnav-right {
     gap: var(--spacing-sm);
+  }
+
+  .search-trigger {
+    padding: 10px;
+  }
+
+  .search-placeholder,
+  .search-hint,
+  .profile-btn,
+  .theme-toggle-btn {
+    display: none;
+  }
+
+  .quick-add-btn {
+    padding: 8px 10px;
   }
 }
 

@@ -52,6 +52,9 @@ export function DashboardOverview({
     )
 
   const quickActions = getDashboardQuickActionsForRole(role)
+  const canViewFinancial = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'GYM_MAINTENANCE_MANAGER'
+  const canViewAdvancedFinancial = role === 'SUPER_ADMIN' || role === 'ADMIN'
+  const canViewOperations = role === 'SUPER_ADMIN' || role === 'ADMIN'
 
   return (
     <div className="dashboard-overview">
@@ -126,71 +129,79 @@ export function DashboardOverview({
       </div>
 
       {/* Financial Statistics */}
-      <div className="dashboard-section">
-        <h2 className="dashboard-section-title">Financial Overview</h2>
-        <div className="dashboard-stats-grid dashboard-stats-grid-five">
-          <StatCard
-            label="Today's Collection"
-            value={`₹${stats.todayCollection.toLocaleString()}`}
-            icon="💰"
-            highlight="success"
-            onClick={() => onStatClick?.('payments')}
-          />
-          <StatCard
-            label="Pending Payments"
-            value={`₹${stats.pendingPayments.toLocaleString()}`}
-            icon="⏳"
-            highlight="warning"
-            onClick={() => onStatClick?.('pending')}
-          />
-          <StatCard
-            label="Monthly Revenue"
-            value={`₹${stats.monthlyRevenue.toLocaleString()}`}
-            icon="📊"
-          />
-          <StatCard
-            label="Monthly Expenses"
-            value={`₹${stats.monthlyExpenses.toLocaleString()}`}
-            icon="💸"
-          />
-          <StatCard
-            label="Net Revenue"
-            value={`₹${stats.netRevenue.toLocaleString()}`}
-            icon="🎯"
-            highlight={stats.netRevenue >= 0 ? 'success' : 'danger'}
-          />
+      {canViewFinancial ? (
+        <div className="dashboard-section">
+          <h2 className="dashboard-section-title">Financial Overview</h2>
+          <div className={`dashboard-stats-grid ${canViewAdvancedFinancial ? 'dashboard-stats-grid-five' : 'dashboard-stats-grid-four'}`}>
+            <StatCard
+              label="Today's Collection"
+              value={`₹${stats.todayCollection.toLocaleString()}`}
+              icon="💰"
+              highlight="success"
+              onClick={() => onStatClick?.('payments')}
+            />
+            <StatCard
+              label="Pending Payments"
+              value={`₹${stats.pendingPayments.toLocaleString()}`}
+              icon="⏳"
+              highlight="warning"
+              onClick={() => onStatClick?.('pending')}
+            />
+            {canViewAdvancedFinancial ? (
+              <>
+                <StatCard
+                  label="Monthly Revenue"
+                  value={`₹${stats.monthlyRevenue.toLocaleString()}`}
+                  icon="📊"
+                />
+                <StatCard
+                  label="Monthly Expenses"
+                  value={`₹${stats.monthlyExpenses.toLocaleString()}`}
+                  icon="💸"
+                />
+                <StatCard
+                  label="Net Revenue"
+                  value={`₹${stats.netRevenue.toLocaleString()}`}
+                  icon="🎯"
+                  highlight={stats.netRevenue >= 0 ? 'success' : 'danger'}
+                />
+              </>
+            ) : null}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {/* Staff & Operations */}
-      <div className="dashboard-section">
-        <h2 className="dashboard-section-title">Operations</h2>
-        <div className="dashboard-stats-grid dashboard-stats-grid-four">
-          <StatCard
-            label="Active Trainers"
-            value={stats.activeTrainers}
-            icon="🏋️"
-            onClick={() => onStatClick?.('trainers')}
-          />
-          <StatCard
-            label="Today's Classes"
-            value={stats.todaysClasses}
-            icon="👫"
-            onClick={() => onStatClick?.('classes')}
-          />
-          <StatCard
-            label="New Leads"
-            value={stats.newLeads}
-            icon="🎯"
-            onClick={() => onStatClick?.('leads')}
-          />
-          <StatCard
-            label="Conversion Rate"
-            value={`${stats.leadConversionRate.toFixed(1)}%`}
-            icon="📈"
-          />
+      {canViewOperations ? (
+        <div className="dashboard-section">
+          <h2 className="dashboard-section-title">Operations</h2>
+          <div className="dashboard-stats-grid dashboard-stats-grid-four">
+            <StatCard
+              label="Active Trainers"
+              value={stats.activeTrainers}
+              icon="🏋️"
+              onClick={() => onStatClick?.('trainers')}
+            />
+            <StatCard
+              label="Today's Classes"
+              value={stats.todaysClasses}
+              icon="👫"
+              onClick={() => onStatClick?.('classes')}
+            />
+            <StatCard
+              label="New Leads"
+              value={stats.newLeads}
+              icon="🎯"
+              onClick={() => onStatClick?.('leads')}
+            />
+            <StatCard
+              label="Conversion Rate"
+              value={`${stats.leadConversionRate.toFixed(1)}%`}
+              icon="📈"
+            />
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {/* Quick Actions */}
       <div className="dashboard-section">

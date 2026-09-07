@@ -252,7 +252,7 @@ export function SuperAdminOrganizationHierarchy() {
         return <Shield size={16} />
       case 'TRAINER':
         return <Briefcase size={16} />
-      case 'RECEPTIONIST':
+      case 'GYM_MAINTENANCE_MANAGER':
         return <UserCheck size={16} />
       case 'USER':
         return <User size={16} />
@@ -557,7 +557,7 @@ export function SuperAdminOrganizationHierarchy() {
           <option value="">All Roles</option>
           <option value="ADMIN">Admins</option>
           <option value="TRAINER">Trainers</option>
-          <option value="RECEPTIONIST">Receptionists</option>
+          <option value="GYM_MAINTENANCE_MANAGER">Gym Maintenance Managers</option>
           <option value="USER">Members</option>
         </select>
       </section>

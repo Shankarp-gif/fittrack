@@ -19,7 +19,7 @@ import { MembershipPage } from './pages/MembershipPage'
 import { AdminDashboard } from './pages/AdminDashboard'
 import { MemberDashboard } from './pages/MemberDashboard'
 import { TrainerDashboard } from './pages/TrainerDashboard'
-import { ReceptionistDashboard } from './pages/ReceptionistDashboard'
+import { GymOperationsDashboard } from './pages/ReceptionistDashboard'
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard'
 import { UserManagement } from './pages/UserManagement'
 import { SettingsPage } from './pages/SettingsPage'
@@ -41,6 +41,7 @@ import { AdminRoleManagement } from './pages/AdminRoleManagement'
 import './styles/design-system.css'
 import './styles/auto-adjustment.css'
 import './App.css'
+import { getDashboardPathForRole } from './utils/roleAccess'
 
 function PublicOnly({ children }: { children: React.JSX.Element }) {
   const { isAuthenticated } = useAuth()
@@ -52,7 +53,10 @@ function DashboardEntry() {
   const { user } = useAuth()
 
   if (!user) return <Navigate to="/login" replace />
-  if (user.role === 'USER') return <Navigate to="/member-dashboard" replace />
+  const roleDashboardPath = getDashboardPathForRole(user.role)
+  if (roleDashboardPath !== '/dashboard') {
+    return <Navigate to={roleDashboardPath} replace />
+  }
 
   return <DashboardPage />
 }
@@ -105,17 +109,20 @@ export default function App() {
             }
           />
           <Route
-            path="/receptionist-dashboard"
+            path="/gym-operations-dashboard"
             element={
-              <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'RECEPTIONIST', 'ADMIN']}>
-                <ReceptionistDashboard />
+              <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'GYM_MAINTENANCE_MANAGER', 'ADMIN']}>
+                <GymOperationsDashboard />
               </RoleBasedRoute>
             }
           />
+
+          {/* Legacy dashboard route kept for backward compatibility */}
+          <Route path="/receptionist-dashboard" element={<Navigate to="/gym-operations-dashboard" replace />} />
           <Route
             path="/member-dashboard"
             element={
-              <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'RECEPTIONIST', 'USER']}>
+              <RoleBasedRoute requiredRoles={['USER']}>
                 <MemberDashboard />
               </RoleBasedRoute>
             }
@@ -125,7 +132,7 @@ export default function App() {
            <Route
              path="/attendance"
              element={
-               <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'RECEPTIONIST', 'USER']}>
+               <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'GYM_MAINTENANCE_MANAGER', 'USER']}>
                  <AttendancePage />
                </RoleBasedRoute>
              }
@@ -133,7 +140,7 @@ export default function App() {
            <Route
              path="/fees"
              element={
-               <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST']}>
+               <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'GYM_MAINTENANCE_MANAGER']}>
                  <FeeCollectionPage />
                </RoleBasedRoute>
              }
@@ -141,7 +148,7 @@ export default function App() {
            <Route
              path="/membership-plans"
              element={
-               <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST', 'USER']}>
+               <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'GYM_MAINTENANCE_MANAGER', 'USER']}>
                  <MembershipPage />
                </RoleBasedRoute>
              }
@@ -173,7 +180,7 @@ export default function App() {
             <Route
               path="/notifications"
               element={
-                <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'RECEPTIONIST', 'USER']}>
+                 <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'GYM_MAINTENANCE_MANAGER', 'USER']}>
                   <NotificationsPage />
                 </RoleBasedRoute>
               }
@@ -181,7 +188,7 @@ export default function App() {
            <Route
              path="/settings"
              element={
-               <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'RECEPTIONIST', 'USER']}>
+               <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'GYM_MAINTENANCE_MANAGER', 'USER']}>
                  <SettingsPage />
                </RoleBasedRoute>
              }
@@ -190,7 +197,7 @@ export default function App() {
             <Route
               path="/members"
               element={
-                <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'RECEPTIONIST']}>
+                <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'GYM_MAINTENANCE_MANAGER']}>
                   <MembersPage />
                 </RoleBasedRoute>
               }
@@ -198,7 +205,7 @@ export default function App() {
             <Route
               path="/members/:id"
               element={
-                <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'RECEPTIONIST']}>
+                <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'GYM_MAINTENANCE_MANAGER']}>
                   <MemberDetailPage />
                 </RoleBasedRoute>
               }
@@ -206,7 +213,7 @@ export default function App() {
             <Route
               path="/members/:id/edit"
               element={
-                <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST']}>
+                <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'GYM_MAINTENANCE_MANAGER']}>
                   <MemberEditPage />
                 </RoleBasedRoute>
               }
@@ -214,7 +221,7 @@ export default function App() {
             <Route
               path="/members/new"
               element={
-                <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST']}>
+                <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'GYM_MAINTENANCE_MANAGER']}>
                   <MemberNewPage />
                 </RoleBasedRoute>
               }
@@ -233,7 +240,7 @@ export default function App() {
            <Route
              path="/classes"
              element={
-               <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'RECEPTIONIST']}>
+                <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'GYM_MAINTENANCE_MANAGER']}>
                  <SimplePage
                    title="Classes"
                    description="Class scheduling and attendance controls are available here."
@@ -263,7 +270,7 @@ export default function App() {
            <Route
              path="/user-management"
              element={
-               <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'RECEPTIONIST', 'TRAINER']}>
+                 <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN', 'GYM_MAINTENANCE_MANAGER']}>
                  <UserManagement />
                </RoleBasedRoute>
              }

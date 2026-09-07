@@ -1,6 +1,7 @@
 package com.fittrack.backend.util;
 
-import java.util.UUID;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Component;
 
 /**
@@ -9,30 +10,34 @@ import org.springframework.stereotype.Component;
 @Component
 public class MemberIdGenerator {
 
+    private static final String MEMBER_SEQUENCE = "global_member_id_seq";
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
     /**
-     * Generate a unique member ID using timestamp and random UUID
-     * Format: MEM-{timestamp}-{randomUUID}
+     * Generate a globally increasing member ID.
+     * Format: MEM000001
      *
      * @return Generated member ID
      */
     public String generateMemberId() {
-        long timestamp = System.currentTimeMillis();
-        String randomSuffix = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        return "MEM-" + timestamp + "-" + randomSuffix;
+        long sequenceValue = nextSequenceValue(MEMBER_SEQUENCE);
+        return String.format("MEM%06d", sequenceValue);
     }
 
     /**
-     * Generate a member ID with organization prefix
-     * Format: {orgPrefix}-{timestamp}-{randomUUID}
-     *
-     * @param orgPrefix Organization prefix (e.g., "GYM" for gym name abbreviation)
-     * @return Generated member ID with organization prefix
+     * Backward-compatible alias; member IDs are now global and sequential.
      */
     public String generateMemberIdWithPrefix(String orgPrefix) {
-        long timestamp = System.currentTimeMillis();
-        String randomSuffix = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        String prefix = (orgPrefix != null && !orgPrefix.isEmpty()) ? orgPrefix.toUpperCase() : "MEM";
-        return prefix + "-" + timestamp + "-" + randomSuffix;
+        return generateMemberId();
+    }
+
+    private long nextSequenceValue(String sequenceName) {
+        Number value = (Number) entityManager
+            .createNativeQuery("select nextval('" + sequenceName + "')")
+            .getSingleResult();
+        return value.longValue();
     }
 }
 

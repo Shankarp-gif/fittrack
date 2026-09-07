@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Building2,
   Users,
@@ -42,6 +43,7 @@ interface AdminUser {
 }
 
 export function SuperAdminDashboard() {
+  const navigate = useNavigate()
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [admins, setAdmins] = useState<AdminUser[]>([])
   const [activeTab, setActiveTab] = useState<'organizations' | 'admins'>('organizations')
@@ -285,6 +287,22 @@ export function SuperAdminDashboard() {
       admin.email.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  const handleViewOrganization = (orgId: number) => {
+    navigate(`/organizations?orgId=${orgId}`)
+  }
+
+  const handleEditOrganization = (orgId: number) => {
+    navigate(`/organizations?orgId=${orgId}&mode=edit`)
+  }
+
+  const handleViewAdmin = (adminId: number) => {
+    navigate(`/user-management?userId=${adminId}`)
+  }
+
+  const handleEditAdmin = (adminId: number) => {
+    navigate(`/user-management?userId=${adminId}&mode=edit`)
+  }
+
   return (
     <div className="superadmin-dashboard">
       {/* Header */}
@@ -428,10 +446,10 @@ export function SuperAdminDashboard() {
                       </td>
                       <td>{new Date(org.createdAt).toLocaleDateString()}</td>
                       <td className="actions-cell">
-                        <button className="action-btn view" title="View details">
+                        <button className="action-btn view" title="View details" onClick={() => handleViewOrganization(org.id)}>
                           <Eye size={18} />
                         </button>
-                        <button className="action-btn edit" title="Edit">
+                        <button className="action-btn edit" title="Edit" onClick={() => handleEditOrganization(org.id)}>
                           <Edit2 size={18} />
                         </button>
                         {org.active && (
@@ -492,10 +510,10 @@ export function SuperAdminDashboard() {
                         </span>
                       </td>
                       <td className="actions-cell">
-                        <button className="action-btn view" title="View details">
+                        <button className="action-btn view" title="View details" onClick={() => handleViewAdmin(admin.id)}>
                           <Eye size={18} />
                         </button>
-                        <button className="action-btn edit" title="Edit">
+                        <button className="action-btn edit" title="Edit" onClick={() => handleEditAdmin(admin.id)}>
                           <Edit2 size={18} />
                         </button>
                         {admin.active && (

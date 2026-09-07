@@ -227,7 +227,7 @@ export function SupervisorHierarchyPage() {
               <option value="SUPER_ADMIN">Super Admin</option>
               <option value="ADMIN">Admin/Gym Owner</option>
               <option value="TRAINER">Trainer</option>
-              <option value="RECEPTIONIST">Receptionist</option>
+              <option value="GYM_MAINTENANCE_MANAGER">Gym Maintenance Manager</option>
               <option value="USER">Member</option>
             </select>
           </div>
@@ -355,7 +355,7 @@ export function SupervisorHierarchyPage() {
         <ul>
           <li><strong>Level 0:</strong> Root users (no supervisor) - Typically Super Admin or Gym Owner</li>
           <li><strong>Level 1:</strong> Direct reports to Level 0 - Typically Admins</li>
-          <li><strong>Level 2+:</strong> Cascade down - Trainers, Receptionists, etc.</li>
+          <li><strong>Level 2+:</strong> Cascade down - Trainers, Gym Maintenance Managers, etc.</li>
         </ul>
         <p>Use this page to establish clear reporting structures for your gym organization.</p>
       </section>

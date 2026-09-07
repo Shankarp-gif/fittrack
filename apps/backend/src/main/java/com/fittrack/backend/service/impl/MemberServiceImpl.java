@@ -19,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.fittrack.backend.service.MemberService;
+import com.fittrack.backend.util.MemberIdGenerator;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +29,7 @@ public class MemberServiceImpl implements MemberService {
     private final MemberRepository memberRepository;
     private final OrganizationRepository organizationRepository;
     private final BranchRepository branchRepository;
+    private final MemberIdGenerator memberIdGenerator;
 
     @Override
     public MemberDTO createMember(Long organizationId, Long branchId, CreateMemberRequest request) {
@@ -40,7 +42,7 @@ public class MemberServiceImpl implements MemberService {
         Member member = new Member();
         member.setOrganization(org);
         member.setBranch(branch);
-        member.setMemberIdNumber(generateMemberIdNumber(organizationId));
+        member.setMemberIdNumber(memberIdGenerator.generateMemberId());
         member.setFullName(request.getFullName());
         member.setEmail(request.getEmail());
         member.setMobile(request.getMobile());
@@ -139,10 +141,6 @@ public class MemberServiceImpl implements MemberService {
             .collect(Collectors.toList());
     }
 
-    private String generateMemberIdNumber(Long organizationId) {
-        long count = memberRepository.countByOrganizationId(organizationId) + 1;
-        return String.format("MEM%04d", count);
-    }
 
     private MemberDTO toDTO(Member member) {
         return MemberDTO.builder()

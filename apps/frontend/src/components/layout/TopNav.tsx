@@ -10,6 +10,7 @@ import type { GymRole } from '../../types/auth'
 import {
   getDashboardSearchPlaceholder,
   getQuickAddActionsForRole,
+  getTopNavConfigForRole,
   resolveDashboardSearchPath,
 } from '../../utils/dashboardActions'
 import './TopNav.css'
@@ -26,6 +27,11 @@ export function TopNav() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [notificationsLoading, setNotificationsLoading] = useState(false)
   const [notificationsError, setNotificationsError] = useState('')
+  const role = (user?.role ?? 'ADMIN') as GymRole
+  const quickActions = getQuickAddActionsForRole(role)
+  const topNavConfig = getTopNavConfigForRole(role)
+  const searchPlaceholder = getDashboardSearchPlaceholder(role)
+  const showQuickAddButton = topNavConfig.showQuickAdd && quickActions.length > 0
 
   const refreshUnreadCount = async () => {
     try {
@@ -53,6 +59,18 @@ export function TopNav() {
   useEffect(() => {
     refreshUnreadCount()
   }, [])
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k' && topNavConfig.showSearch) {
+        event.preventDefault()
+        setSearchOpen(true)
+      }
+    }
+
+    window.addEventListener('keydown', handleShortcut)
+    return () => window.removeEventListener('keydown', handleShortcut)
+  }, [topNavConfig.showSearch])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -106,16 +124,12 @@ export function TopNav() {
     }
   }
 
-  const role = (user?.role ?? 'ADMIN') as GymRole
-  const quickActions = getQuickAddActionsForRole(role)
-  const searchPlaceholder = getDashboardSearchPlaceholder(role)
-
   return (
     <>
       <div className="topnav">
         {/* Left Section - Search */}
         <div className="topnav-left">
-          {searchOpen ? (
+          {topNavConfig.showSearch && searchOpen ? (
             <form onSubmit={handleSearch} className="search-form">
               <input
                 type="text"
@@ -137,26 +151,30 @@ export function TopNav() {
                 ✕
               </button>
             </form>
-          ) : (
+          ) : topNavConfig.showSearch ? (
             <button onClick={() => setSearchOpen(true)} className="search-trigger">
               <span>🔍</span>
               <span className="search-placeholder">{searchPlaceholder}</span>
               <span className="search-hint">⌘K</span>
             </button>
+          ) : (
+            <div className="topnav-search-placeholder-spacer" />
           )}
         </div>
 
         {/* Right Section */}
         <div className="topnav-right">
           {/* Quick Add Button */}
-          <button
-            className="quick-add-btn"
-            onClick={() => setShowQuickAdd(true)}
-            title="Quick Actions"
-          >
-            <span>➕</span>
-            <span>Quick Add</span>
-          </button>
+          {showQuickAddButton ? (
+            <button
+              className="quick-add-btn"
+              onClick={() => setShowQuickAdd(true)}
+              title={topNavConfig.quickAddLabel}
+            >
+              <span>➕</span>
+              <span>{topNavConfig.quickAddLabel}</span>
+            </button>
+          ) : null}
 
           {/* Notifications */}
           <button className="topnav-btn notification-btn" title="Notifications" onClick={openNotifications}>
@@ -166,7 +184,7 @@ export function TopNav() {
 
           {/* Theme Toggle */}
           <button
-            className="topnav-btn"
+            className="topnav-btn theme-toggle-btn"
             onClick={handleThemeToggle}
             title={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}
           >
@@ -174,7 +192,7 @@ export function TopNav() {
           </button>
 
           {/* Profile */}
-          <button className="profile-btn" title={user?.fullName || 'Profile'}>
+          <button className="profile-btn" title={user?.fullName || 'Profile'} onClick={() => navigate('/settings')}>
             <div className="profile-avatar-mini">
               {user?.fullName?.[0]?.toUpperCase() || 'A'}
             </div>
@@ -185,7 +203,7 @@ export function TopNav() {
 
       {/* Quick Add Modal */}
       <Modal
-        isOpen={showQuickAdd}
+        isOpen={showQuickAdd && showQuickAddButton}
         title="Quick Actions"
         onClose={() => setShowQuickAdd(false)}
         size="sm"

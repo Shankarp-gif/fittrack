@@ -5,6 +5,7 @@ import java.time.Instant;
 
 public record UserListResponse(
     Long id,
+    String employeeIdNumber,
     String fullName,
     String email,
     RoleName role,

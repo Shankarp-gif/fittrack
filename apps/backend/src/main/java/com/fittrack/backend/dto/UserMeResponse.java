@@ -8,6 +8,7 @@ import java.time.LocalDate;
 
 public record UserMeResponse(
         Long id,
+        String employeeIdNumber,
         String fullName,
         String email,
         String mobile,

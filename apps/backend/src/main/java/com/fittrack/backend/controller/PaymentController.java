@@ -35,7 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/payments")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST','USER')")
+@PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER','USER')")
 public class PaymentController {
 
     private final PaymentService paymentService;
@@ -46,7 +46,7 @@ public class PaymentController {
      * Create a new payment
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','RECEPTIONIST','USER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','GYM_MAINTENANCE_MANAGER','USER')")
     public ResponseEntity<ApiResponse<PaymentDTO>> createPayment(
         @Valid @RequestBody CreatePaymentRequest request,
         Authentication authentication) {
@@ -70,7 +70,7 @@ public class PaymentController {
      * Get payment by ID
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER')")
     public ResponseEntity<ApiResponse<PaymentDTO>> getPayment(
         @PathVariable Long id,
         Authentication authentication) {
@@ -88,7 +88,7 @@ public class PaymentController {
      * List all payments for organization with pagination
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER')")
     public ResponseEntity<ApiResponse<Page<PaymentDTO>>> listPayments(
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int size,
@@ -103,7 +103,7 @@ public class PaymentController {
      * List payments by status
      */
     @GetMapping("/status/{status}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER')")
     public ResponseEntity<ApiResponse<Page<PaymentDTO>>> listPaymentsByStatus(
         @PathVariable String status,
         @RequestParam(defaultValue = "0") int page,
@@ -119,7 +119,7 @@ public class PaymentController {
      * List payments for a specific member
      */
     @GetMapping("/member/{memberId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER')")
     public ResponseEntity<ApiResponse<Page<PaymentDTO>>> listMemberPayments(
         @PathVariable Long memberId,
         @RequestParam(defaultValue = "0") int page,
@@ -135,7 +135,7 @@ public class PaymentController {
      * Get pending payments
      */
     @GetMapping("/pending")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER')")
     public ResponseEntity<ApiResponse<List<PaymentDTO>>> getPendingPayments(
         Authentication authentication) {
         Long orgId = authContextHelper.getOrganizationId(authentication);
@@ -147,7 +147,7 @@ public class PaymentController {
      * Get today's payments
      */
     @GetMapping("/today")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER')")
     public ResponseEntity<ApiResponse<List<PaymentDTO>>> getTodayPayments(
         Authentication authentication) {
         Long orgId = authContextHelper.getOrganizationId(authentication);
@@ -159,7 +159,7 @@ public class PaymentController {
      * Mark payment as paid
      */
     @PostMapping("/{id}/mark-paid")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','GYM_MAINTENANCE_MANAGER')")
     public ResponseEntity<ApiResponse<PaymentDTO>> markPaymentAsPaid(@PathVariable Long id) {
         PaymentDTO payment = paymentService.markPaymentAsPaid(id);
         return ResponseEntity.ok(ApiResponse.success("Payment marked as paid", payment));
@@ -169,7 +169,7 @@ public class PaymentController {
      * Update payment
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','GYM_MAINTENANCE_MANAGER')")
     public ResponseEntity<ApiResponse<PaymentDTO>> updatePayment(
         @PathVariable Long id,
         @Valid @RequestBody CreatePaymentRequest request) {
@@ -191,7 +191,7 @@ public class PaymentController {
      * Get total revenue for date range
      */
     @GetMapping("/revenue")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER')")
     public ResponseEntity<ApiResponse<BigDecimal>> getTotalRevenue(
         @RequestParam LocalDateTime startDate,
         @RequestParam LocalDateTime endDate,
@@ -205,7 +205,7 @@ public class PaymentController {
      * Get total pending amount
      */
     @GetMapping("/pending-amount")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER')")
     public ResponseEntity<ApiResponse<BigDecimal>> getTotalPendingAmount(
         Authentication authentication) {
         Long orgId = authContextHelper.getOrganizationId(authentication);
@@ -217,7 +217,7 @@ public class PaymentController {
      * Get collection summary (for dashboard)
      */
     @GetMapping("/collection-summary")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER')")
     public ResponseEntity<ApiResponse<PaymentCollectionSummary>> getCollectionSummary(
         Authentication authentication) {
         Long orgId = authContextHelper.getOrganizationId(authentication);
@@ -229,7 +229,7 @@ public class PaymentController {
      * Search payments
      */
     @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER')")
     public ResponseEntity<ApiResponse<Page<PaymentDTO>>> searchPayments(
         @RequestParam String query,
         @RequestParam(defaultValue = "0") int page,
@@ -245,7 +245,7 @@ public class PaymentController {
      * Filter payments by date range
      */
     @GetMapping("/filter-by-date")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER')")
     public ResponseEntity<ApiResponse<Page<PaymentDTO>>> filterPaymentsByDateRange(
         @RequestParam LocalDateTime startDate,
         @RequestParam LocalDateTime endDate,

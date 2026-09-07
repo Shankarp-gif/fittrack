@@ -14,16 +14,17 @@ export type Gender = 'MALE' | 'FEMALE' | 'NON_BINARY' | 'PREFER_NOT_TO_SAY'
  * - SUPER_ADMIN: Platform-level admin - Full global access
  * - ADMIN: Gym Owner/Manager - Full system access
  * - TRAINER: Fitness Trainer - Training, member management
- * - RECEPTIONIST: Front Desk Staff - Member check-in, fees, registration
+ * - GYM_MAINTENANCE_MANAGER: Front desk and operations - check-ins, member support, fees
  * - USER: Gym Member - Workout tracking, personal dashboard
  */
-export type GymRole = 'SUPER_ADMIN' | 'ADMIN' | 'TRAINER' | 'RECEPTIONIST' | 'USER'
+export type GymRole = 'SUPER_ADMIN' | 'ADMIN' | 'TRAINER' | 'GYM_MAINTENANCE_MANAGER' | 'USER'
 
 // For backward compatibility
 export type UserRole = GymRole
 
 export interface UserMe {
   id: number
+  employeeIdNumber?: string
   fullName: string
   email: string
   mobile?: string

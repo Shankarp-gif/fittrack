@@ -41,7 +41,7 @@ import java.util.Arrays;
 @RestController
 @RequestMapping("/api/members")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST')")
+@PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER')")
 public class MemberController {
 
     private static final Logger logger = LoggerFactory.getLogger(MemberController.class);
@@ -78,7 +78,7 @@ public class MemberController {
     }
 
     @GetMapping("/{id}/stats")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST','USER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER','USER')")
     public ResponseEntity<ApiResponse<MemberStatsDTO>> getMemberStats(
         @PathVariable Long id,
         Authentication authentication) {
@@ -250,7 +250,7 @@ public class MemberController {
     }
 
     @GetMapping("/by-email")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST','USER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER','USER')")
     public ResponseEntity<ApiResponse<MemberDTO>> getMemberByEmail(
         @RequestParam String email,
         Authentication authentication) {

@@ -8,6 +8,12 @@ export interface DashboardLinkAction {
   keywords: string[]
 }
 
+export interface TopNavRoleConfig {
+  showSearch: boolean
+  showQuickAdd: boolean
+  quickAddLabel: string
+}
+
 const roleQuickAddActions: Record<GymRole, DashboardLinkAction[]> = {
   SUPER_ADMIN: [
     { id: 'member', label: 'Add Member', path: '/members/new', icon: '👤', keywords: ['member', 'user', 'client'] },
@@ -32,7 +38,7 @@ const roleQuickAddActions: Record<GymRole, DashboardLinkAction[]> = {
     { id: 'progress', label: 'Progress', path: '/progress', icon: '📈', keywords: ['progress', 'result', 'results', 'achievement', 'achievements'] },
     { id: 'plans', label: 'Plans', path: '/plans', icon: '🗓️', keywords: ['plan', 'plans', 'schedule'] },
   ],
-  RECEPTIONIST: [
+  GYM_MAINTENANCE_MANAGER: [
     { id: 'register', label: 'Register Member', path: '/members/new', icon: '📝', keywords: ['register', 'registration', 'new member', 'member'] },
     { id: 'members', label: 'Members', path: '/members', icon: '👥', keywords: ['members', 'member list', 'member details'] },
     { id: 'fees', label: 'Collect Payment', path: '/fees', icon: '💳', keywords: ['fees', 'fee', 'payment', 'payments', 'billing'] },
@@ -59,8 +65,16 @@ const roleDashboardActions: Record<GymRole, DashboardLinkAction[]> = {
     { id: 'classes', label: 'Classes', path: '/classes', icon: '📅', keywords: ['class', 'session', 'schedule'] },
     { id: 'plans', label: 'Plans', path: '/plans', icon: '🗓️', keywords: ['plan', 'plans', 'program'] },
   ],
-  RECEPTIONIST: roleQuickAddActions.RECEPTIONIST,
+  GYM_MAINTENANCE_MANAGER: roleQuickAddActions.GYM_MAINTENANCE_MANAGER,
   USER: roleQuickAddActions.USER,
+}
+
+const roleTopNavConfig: Record<GymRole, TopNavRoleConfig> = {
+  SUPER_ADMIN: { showSearch: true, showQuickAdd: true, quickAddLabel: 'Quick Add' },
+  ADMIN: { showSearch: true, showQuickAdd: true, quickAddLabel: 'Quick Add' },
+  TRAINER: { showSearch: true, showQuickAdd: false, quickAddLabel: 'Quick Add' },
+  GYM_MAINTENANCE_MANAGER: { showSearch: true, showQuickAdd: true, quickAddLabel: 'Quick Add' },
+  USER: { showSearch: false, showQuickAdd: true, quickAddLabel: 'Quick Access' },
 }
 
 export function getQuickAddActionsForRole(role: GymRole): DashboardLinkAction[] {
@@ -71,13 +85,17 @@ export function getDashboardQuickActionsForRole(role: GymRole): DashboardLinkAct
   return roleDashboardActions[role] ?? []
 }
 
+export function getTopNavConfigForRole(role: GymRole): TopNavRoleConfig {
+  return roleTopNavConfig[role] ?? { showSearch: true, showQuickAdd: false, quickAddLabel: 'Quick Add' }
+}
+
 export function getDashboardSearchPlaceholder(role: GymRole): string {
   switch (role) {
     case 'USER':
       return 'Search membership, workouts, progress...'
     case 'TRAINER':
       return 'Search clients, sessions, workouts...'
-    case 'RECEPTIONIST':
+    case 'GYM_MAINTENANCE_MANAGER':
       return 'Search members, check-ins, fees...'
     default:
       return 'Search members, fees, plans...'

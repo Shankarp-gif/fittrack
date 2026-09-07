@@ -30,7 +30,7 @@ interface ReceptionistStats {
   }>
 }
 
-export function ReceptionistDashboard() {
+export function GymOperationsDashboard() {
   const navigate = useNavigate()
   const [stats, setStats] = useState<ReceptionistStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -76,7 +76,7 @@ export function ReceptionistDashboard() {
       {/* Page Header */}
       <div className="page-header role-dashboard-header">
         <div>
-          <h1 className="page-title role-dashboard-title">Reception Dashboard</h1>
+          <h1 className="page-title role-dashboard-title">Gym Maintenance Manager Dashboard</h1>
           <p className="page-subtitle role-dashboard-subtitle">Manage check-ins, registrations, and fee collection</p>
         </div>
       </div>
@@ -245,4 +245,7 @@ export function ReceptionistDashboard() {
     </div>
   )
 }
+
+// Backward-compatible export for any remaining imports.
+export const ReceptionistDashboard = GymOperationsDashboard
 

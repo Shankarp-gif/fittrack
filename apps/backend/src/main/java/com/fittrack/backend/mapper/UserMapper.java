@@ -13,6 +13,7 @@ public final class UserMapper {
     public static UserMeResponse toMeResponse(User user, UserProfile profile) {
         return new UserMeResponse(
                 user.getId(),
+                user.getEmployeeIdNumber(),
                 user.getFullName(),
                 user.getEmail(),
                 user.getMobile(),

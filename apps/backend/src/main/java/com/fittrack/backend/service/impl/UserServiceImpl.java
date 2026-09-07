@@ -23,6 +23,7 @@ import com.fittrack.backend.repository.RoleRepository;
 import com.fittrack.backend.repository.UserProfileRepository;
 import com.fittrack.backend.repository.UserRepository;
 import com.fittrack.backend.service.UserService;
+import com.fittrack.backend.util.EmployeeIdGenerator;
 import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
@@ -41,19 +42,22 @@ public class UserServiceImpl implements UserService {
     private final RoleRepository roleRepository;
     private final OrganizationRepository organizationRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmployeeIdGenerator employeeIdGenerator;
 
     public UserServiceImpl(
             UserRepository userRepository,
             UserProfileRepository profileRepository,
             RoleRepository roleRepository,
             OrganizationRepository organizationRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            EmployeeIdGenerator employeeIdGenerator
     ) {
         this.userRepository = userRepository;
         this.profileRepository = profileRepository;
         this.roleRepository = roleRepository;
         this.organizationRepository = organizationRepository;
         this.passwordEncoder = passwordEncoder;
+        this.employeeIdGenerator = employeeIdGenerator;
     }
 
     @Override
@@ -127,7 +131,7 @@ public class UserServiceImpl implements UserService {
             scopedUsers = scopedUsers.stream()
                 .filter(u -> u.getRole().getName() != RoleName.SUPER_ADMIN && u.getRole().getName() != RoleName.ADMIN)
                 .collect(Collectors.toList());
-        } else if (role == RoleName.RECEPTIONIST) {
+        } else if (role == RoleName.GYM_MAINTENANCE_MANAGER) {
             if (requester.getOrganization() == null) {
                 return List.of();
             }
@@ -183,6 +187,7 @@ public class UserServiceImpl implements UserService {
             .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Role not found"));
 
         target.setRole(role);
+        syncEmployeeIdNumber(target, request.newRole());
         userRepository.save(target);
 
         UserProfile profile = profileRepository.findByUserId(target.getId()).orElse(null);
@@ -226,6 +231,7 @@ public class UserServiceImpl implements UserService {
         admin.setEmail(request.email());
         admin.setPasswordHash(passwordEncoder.encode(request.password()));
         admin.setRole(adminRole);
+        syncEmployeeIdNumber(admin, RoleName.ADMIN);
         admin.setOrganization(organization);
         admin = userRepository.save(admin);
 
@@ -333,6 +339,7 @@ public class UserServiceImpl implements UserService {
     private UserListResponse toUserListResponse(User user) {
         return new UserListResponse(
             user.getId(),
+            user.getEmployeeIdNumber(),
             user.getFullName(),
             user.getEmail(),
             user.getRole().getName(),
@@ -405,13 +412,13 @@ public class UserServiceImpl implements UserService {
             return;
         }
 
-        if (requesterRole == RoleName.RECEPTIONIST) {
+        if (requesterRole == RoleName.GYM_MAINTENANCE_MANAGER) {
             if (requester.getOrganization() == null || target.getOrganization() == null
                 || !requester.getOrganization().getId().equals(target.getOrganization().getId())) {
                 throw new AppException(HttpStatus.FORBIDDEN, "You can manage only your organization team members");
             }
             if (targetRole != RoleName.USER) {
-                throw new AppException(HttpStatus.FORBIDDEN, "Receptionist can deactivate members only");
+                throw new AppException(HttpStatus.FORBIDDEN, "Gym maintenance manager can deactivate members only");
             }
             return;
         }
@@ -472,12 +479,12 @@ public class UserServiceImpl implements UserService {
         Set<RoleName> allowedSupervisorRoles = Set.of(
             RoleName.SUPER_ADMIN,
             RoleName.ADMIN,
-            RoleName.RECEPTIONIST
+            RoleName.GYM_MAINTENANCE_MANAGER
         );
 
         if (!allowedSupervisorRoles.contains(supervisorRole)) {
             throw new AppException(HttpStatus.BAD_REQUEST,
-                "Supervisor must have SUPER_ADMIN, ADMIN, or RECEPTIONIST role");
+                "Supervisor must have SUPER_ADMIN, ADMIN, or GYM_MAINTENANCE_MANAGER role");
         }
 
         // Admin can only assign supervisors within their organization
@@ -535,6 +542,7 @@ public class UserServiceImpl implements UserService {
         user.setEmail(request.email());
         user.setPasswordHash(passwordEncoder.encode(defaultPassword));
         user.setRole(role);
+        syncEmployeeIdNumber(user, request.role());
         user.setActive(true);
         user.setOrganization(organization);
 
@@ -553,9 +561,21 @@ public class UserServiceImpl implements UserService {
         return switch (role) {
             case ADMIN -> "admin123";
             case TRAINER -> "trainer123";
-            case RECEPTIONIST -> "receptionist123";
+            case GYM_MAINTENANCE_MANAGER -> "gmm123";
             case USER -> "member123";
             case SUPER_ADMIN -> "superadmin123";
         };
+    }
+
+    private void syncEmployeeIdNumber(User user, RoleName roleName) {
+        if (!employeeIdGenerator.requiresEmployeeId(roleName)) {
+            user.setEmployeeIdNumber(null);
+            return;
+        }
+
+        String expectedPrefix = employeeIdGenerator.getPrefix(roleName);
+        if (user.getEmployeeIdNumber() == null || !user.getEmployeeIdNumber().startsWith(expectedPrefix)) {
+            user.setEmployeeIdNumber(employeeIdGenerator.generateEmployeeId(roleName));
+        }
     }
 }

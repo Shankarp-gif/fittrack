@@ -37,7 +37,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/attendance")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','RECEPTIONIST','USER')")
+@PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','TRAINER','GYM_MAINTENANCE_MANAGER','USER')")
 public class AttendanceController {
 
     private static final Logger logger = LoggerFactory.getLogger(AttendanceController.class);
@@ -268,7 +268,7 @@ public class AttendanceController {
      * Get all attendance records for a specific date (for dashboard/reports)
      * This endpoint filters based on user role:
      * - USER: Only their own attendance
-     * - ADMIN/RECEPTIONIST/SUPER_ADMIN: Their organization's attendance
+     * - ADMIN/GYM_MAINTENANCE_MANAGER/SUPER_ADMIN: Their organization's attendance
      * - Can also filter by supervisor for hierarchy
      */
     @GetMapping("/records")
@@ -343,8 +343,8 @@ public class AttendanceController {
                         .build())
                     .collect(Collectors.toList());
                 }
-            } else if ("ADMIN".equalsIgnoreCase(userRole) || "RECEPTIONIST".equalsIgnoreCase(userRole) || "SUPER_ADMIN".equalsIgnoreCase(userRole)) {
-                // Admin and Receptionist see all attendance for their organization
+            } else if ("ADMIN".equalsIgnoreCase(userRole) || "GYM_MAINTENANCE_MANAGER".equalsIgnoreCase(userRole) || "SUPER_ADMIN".equalsIgnoreCase(userRole)) {
+                // Admin and gym maintenance manager see all attendance for their organization
                 records = attendanceService.getAttendanceByDate(branchId, attendanceDate)
                     .stream()
                     .map(dto -> AttendanceDTO.builder()

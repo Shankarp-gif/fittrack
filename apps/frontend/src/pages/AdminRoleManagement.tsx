@@ -17,7 +17,7 @@ interface User {
   organizationName?: string
 }
 
-const AVAILABLE_ROLES: GymRole[] = ['ADMIN', 'TRAINER', 'RECEPTIONIST', 'USER']
+const AVAILABLE_ROLES: GymRole[] = ['ADMIN', 'TRAINER', 'GYM_MAINTENANCE_MANAGER', 'USER']
 
 
 export function AdminRoleManagement() {
@@ -108,7 +108,7 @@ export function AdminRoleManagement() {
       return AVAILABLE_ROLES
     }
     if (currentUser.role === 'ADMIN') {
-      return ['TRAINER', 'RECEPTIONIST', 'USER']
+      return ['TRAINER', 'GYM_MAINTENANCE_MANAGER', 'USER']
     }
     return []
   }
@@ -133,7 +133,7 @@ export function AdminRoleManagement() {
         return 'role-admin'
       case 'TRAINER':
         return 'role-trainer'
-      case 'RECEPTIONIST':
+      case 'GYM_MAINTENANCE_MANAGER':
         return 'role-receptionist'
       case 'USER':
         return 'role-user'
@@ -147,7 +147,7 @@ export function AdminRoleManagement() {
       SUPER_ADMIN: 'Manage all organizations and system settings',
       ADMIN: 'Manage gym operations, users, and members',
       TRAINER: 'Manage training sessions and member progress',
-      RECEPTIONIST: 'Handle check-ins, registrations, and fees',
+      GYM_MAINTENANCE_MANAGER: 'Handle check-ins, member onboarding, and day-to-day gym operations',
       USER: 'Member - Track workouts and personal progress',
     }
     return descriptions[role]
