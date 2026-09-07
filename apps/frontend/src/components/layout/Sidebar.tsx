@@ -17,17 +17,34 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
 
   // Load sidebar state from localStorage
   useEffect(() => {
-    const savedState = localStorage.getItem('sidebarCollapsed')
-    if (savedState !== null) {
-      setCollapsed(JSON.parse(savedState))
+    try {
+      const savedState = localStorage.getItem('sidebarCollapsed')
+      if (savedState !== null) {
+        const parsed = JSON.parse(savedState)
+        if (typeof parsed === 'boolean') {
+          setCollapsed(parsed)
+          onToggle?.(parsed)
+        }
+      }
+    } catch {
+      // Ignore malformed persisted state and keep default sidebar behavior.
+      localStorage.removeItem('sidebarCollapsed')
     }
-  }, [])
+  }, [onToggle])
+
+  useEffect(() => {
+    setCollapsed(isCollapsed)
+  }, [isCollapsed])
 
   // Handle toggle
   const handleToggle = () => {
     const newState = !collapsed
     setCollapsed(newState)
-    localStorage.setItem('sidebarCollapsed', JSON.stringify(newState))
+    try {
+      localStorage.setItem('sidebarCollapsed', JSON.stringify(newState))
+    } catch {
+      // Ignore persistence errors in restricted browser storage contexts.
+    }
     onToggle?.(newState)
   }
 
