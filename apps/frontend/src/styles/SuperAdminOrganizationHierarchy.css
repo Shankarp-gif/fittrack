@@ -376,6 +376,7 @@
 
 .role-users-table table {
   width: 100%;
+  min-width: 620px;
   border-collapse: collapse;
 }
 

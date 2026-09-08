@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Users,
@@ -34,27 +34,23 @@ interface RecentActivity {
   type: 'enrollment' | 'payment' | 'attendance' | 'alert'
 }
 
+const DEFAULT_ADMIN_STATS: AdminStats = {
+  totalMembers: 0,
+  activeMembers: 0,
+  expiredMembers: 0,
+  totalRevenue: 0,
+  pendingCollections: 0,
+  todayCheckIns: 0,
+  weeklyActiveMembers: 0,
+  monthlyGrowth: 0,
+}
+
 export function AdminDashboard() {
   const navigate = useNavigate()
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([])
   const [loading, setLoading] = useState(true)
-  const defaultStats: AdminStats = {
-    totalMembers: 0,
-    activeMembers: 0,
-    expiredMembers: 0,
-    totalRevenue: 0,
-    pendingCollections: 0,
-    todayCheckIns: 0,
-    weeklyActiveMembers: 0,
-    monthlyGrowth: 0,
-  }
-
-  useEffect(() => {
-    fetchDashboardData()
-  }, [])
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     setLoading(true)
     try {
       // Fetch stats from API
@@ -91,24 +87,61 @@ export function AdminDashboard() {
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
       // Show default empty state
-      setStats(defaultStats)
+      setStats(DEFAULT_ADMIN_STATS)
       setRecentActivities([])
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    void fetchDashboardData()
+  }, [fetchDashboardData])
 
   const handleExportReport = async () => {
     try {
+      const now = new Date()
+      const safeDate = now.toISOString().slice(0, 10)
+      const csvLines = [
+        'Section,Metric,Value',
+        `Stats,Total Members,${stats?.totalMembers ?? 0}`,
+        `Stats,Active Members,${stats?.activeMembers ?? 0}`,
+        `Stats,Expired Members,${stats?.expiredMembers ?? 0}`,
+        `Stats,Total Revenue,${stats?.totalRevenue ?? 0}`,
+        `Stats,Pending Collections,${stats?.pendingCollections ?? 0}`,
+        `Stats,Today's Check-ins,${stats?.todayCheckIns ?? 0}`,
+        `Stats,Weekly Active Members,${stats?.weeklyActiveMembers ?? 0}`,
+        `Stats,Monthly Growth,${stats?.monthlyGrowth ?? 0}`,
+        '',
+        'Recent Activity,Member,Action,Timestamp,Type',
+        ...recentActivities.map((activity) =>
+          [
+            'Activity',
+            `"${activity.memberName.replace(/"/g, '""')}"`,
+            `"${activity.action.replace(/"/g, '""')}"`,
+            `"${activity.timestamp.replace(/"/g, '""')}"`,
+            activity.type,
+          ].join(',')
+        ),
+      ]
+
+      const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `admin-dashboard-report-${safeDate}.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
       showCenteredSuccessModal({
         isOpen: true,
-        title: 'Generating Report',
-        message: 'Your report is being generated. Please wait...',
-        type: 'info',
-        duration: 2000,
+        title: 'Report Exported',
+        message: 'Dashboard report downloaded as CSV.',
+        type: 'success',
+        duration: 2200,
       })
-      // TODO: Implement actual report export functionality
-      // This would typically call an API to generate and download a report
     } catch (error) {
       console.error('Error exporting report:', error)
       showCenteredSuccessModal({
@@ -138,8 +171,7 @@ export function AdminDashboard() {
   }
 
   const handleViewAllActivities = () => {
-    // Navigate to a full activities page if it exists, or show a modal
-    navigate('/reports')
+    navigate('/notifications')
   }
 
   const getActivityIcon = (type: string) => {

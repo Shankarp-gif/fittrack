@@ -164,7 +164,7 @@ export function getNavItemsForRole(role: GymRole) {
     ],
     GYM_MAINTENANCE_MANAGER: [
       { icon: '📋', label: 'Check-In', path: '/attendance' },
-      { icon: '👤', label: 'Team Members', path: '/user-management' },
+      { icon: '👤', label: 'Operations Desk', path: '/user-management' },
       { icon: '💳', label: 'Fee Collection', path: '/fees' },
       { icon: '👥', label: 'Members', path: '/members' },
       { icon: '🎫', label: 'Memberships', path: '/membership-plans' },

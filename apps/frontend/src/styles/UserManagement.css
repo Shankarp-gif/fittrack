@@ -146,12 +146,14 @@
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   margin-bottom: var(--spacing-2xl);
 }
 
 .users-table {
   width: 100%;
+  min-width: 880px;
   border-collapse: collapse;
 }
 

@@ -18,12 +18,14 @@ interface ReceptionistStats {
   }>
   recentCheckIns: Array<{
     id: number
+    memberId?: number
     memberName: string
     checkInTime: string
     status: 'checked-in' | 'checked-out'
   }>
   pendingFees: Array<{
     id: number
+    memberId?: number
     memberName: string
     amount: number
     daysOverdue: number
@@ -43,16 +45,55 @@ export function GymOperationsDashboard() {
     setLoading(true)
     try {
       const response = await api.get('/api/receptionist/stats').catch(() => ({ data: null }))
-      const stats: ReceptionistStats = response.data || {
-        todayCheckIns: 0,
-        totalMembers: 0,
-        pendingFeesCount: 0,
-        totalPendingFees: 0,
-        newRegistrationsToday: 0,
-        newRegistrations: [],
-        recentCheckIns: [],
-        pendingFees: [],
+      const raw = response.data?.data || response.data || {}
+      const stats: ReceptionistStats = {
+        todayCheckIns: Number(raw.todayCheckIns) || 0,
+        totalMembers: Number(raw.totalMembers) || 0,
+        pendingFeesCount: Number(raw.pendingFeesCount) || 0,
+        totalPendingFees: Number(raw.totalPendingFees) || 0,
+        newRegistrationsToday: Number(raw.newRegistrationsToday) || 0,
+        newRegistrations: Array.isArray(raw.newRegistrations)
+          ? raw.newRegistrations.map((reg: any) => ({
+            id: Number(reg.id || reg.memberId) || 0,
+            name: String(reg.name || reg.memberName || 'Member'),
+            time: String(reg.time || reg.createdAt || '-'),
+            plan: String(reg.plan || reg.planName || 'No plan'),
+          }))
+          : [],
+        recentCheckIns: Array.isArray(raw.recentCheckIns)
+          ? raw.recentCheckIns.map((checkin: any) => ({
+            id: Number(checkin.id) || 0,
+            memberId: Number(checkin.memberId) || undefined,
+            memberName: String(checkin.memberName || checkin.name || 'Member'),
+            checkInTime: String(checkin.checkInTime || checkin.time || '-'),
+            status: checkin.status === 'checked-out' ? 'checked-out' : 'checked-in',
+          }))
+          : [],
+        pendingFees: Array.isArray(raw.pendingFees)
+          ? raw.pendingFees.map((fee: any) => ({
+            id: Number(fee.id || fee.memberId) || 0,
+            memberId: Number(fee.memberId) || undefined,
+            memberName: String(fee.memberName || fee.name || 'Member'),
+            amount: Number(fee.amount) || 0,
+            daysOverdue: Number(fee.daysOverdue) || 0,
+          }))
+          : [],
       }
+
+      if (!response.data) {
+        setStats({
+          todayCheckIns: 0,
+          totalMembers: 0,
+          pendingFeesCount: 0,
+          totalPendingFees: 0,
+          newRegistrationsToday: 0,
+          newRegistrations: [],
+          recentCheckIns: [],
+          pendingFees: [],
+        })
+        return
+      }
+
       setStats(stats)
     } catch (error) {
       console.error('Error fetching receptionist stats:', error)
@@ -153,7 +194,7 @@ export function GymOperationsDashboard() {
                     <h4>{reg.name}</h4>
                     <p>{reg.plan}</p>
                   </div>
-                  <button className="reg-action" onClick={() => navigate('/membership-plans')}>Complete</button>
+                  <button className="reg-action" onClick={() => navigate(`/membership-plans?memberId=${reg.id}`)}>Complete</button>
                 </div>
               ))}
             </div>
@@ -181,7 +222,12 @@ export function GymOperationsDashboard() {
                     <h4>{checkin.memberName}</h4>
                     <p>{checkin.checkInTime}</p>
                   </div>
-                  <button className="checkin-action" onClick={() => navigate('/attendance')}>Update</button>
+                  <button
+                    className="checkin-action"
+                    onClick={() => navigate(checkin.memberId ? `/attendance?memberId=${checkin.memberId}` : '/attendance')}
+                  >
+                    Update
+                  </button>
                 </div>
               ))}
             </div>
@@ -209,7 +255,12 @@ export function GymOperationsDashboard() {
                     <h4>{fee.memberName}</h4>
                     <p className="overdue-days">{fee.daysOverdue} days overdue</p>
                   </div>
-                  <button className="fee-action" onClick={() => navigate('/fees')}>Collect</button>
+                  <button
+                    className="fee-action"
+                    onClick={() => navigate(fee.memberId ? `/fees?memberId=${fee.memberId}&tab=pending` : '/fees?tab=pending')}
+                  >
+                    Collect
+                  </button>
                 </div>
               ))}
             </div>

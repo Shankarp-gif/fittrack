@@ -4,8 +4,8 @@ services:
     container_name: fittrack-db
     environment:
       POSTGRES_DB: fitness
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -18,10 +18,11 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: prod
       DB_URL: jdbc:postgresql://database:5432/fitness
-      DB_USERNAME: admin
-      DB_PASSWORD: admin
-      JWT_SECRET: ZmFrZS1kZXYtc2VjcmV0LXNob3VsZC1iZS1vdmVycmlkZGVuLWluLXByb2Q=
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
       JWT_ACCESS_EXP_MIN: 30
+      CORS_ALLOWED_ORIGIN_PATTERNS: ${CORS_ALLOWED_ORIGIN_PATTERNS}
     depends_on:
       - database
     ports:

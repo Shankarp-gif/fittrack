@@ -32,10 +32,10 @@ public interface PaymentService {
     List<PaymentDTO> getTodayPayments(Long organizationId);
 
     // Mark payment as paid
-    PaymentDTO markPaymentAsPaid(Long paymentId);
+    PaymentDTO markPaymentAsPaid(Long organizationId, Long paymentId);
 
     // Update payment
-    PaymentDTO updatePayment(Long paymentId, CreatePaymentRequest request);
+    PaymentDTO updatePayment(Long organizationId, Long paymentId, CreatePaymentRequest request);
 
     // Get total revenue for date range
     BigDecimal getTotalRevenue(Long organizationId, LocalDateTime startDate, LocalDateTime endDate);
@@ -56,6 +56,6 @@ public interface PaymentService {
     List<String> getAvailablePaymentMethods();
 
     // Soft delete payment
-    void deletePayment(Long paymentId);
+    void deletePayment(Long organizationId, Long paymentId);
 }
 

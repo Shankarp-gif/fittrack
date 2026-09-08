@@ -1,26 +1,62 @@
 package com.fittrack.backend.security;
 
+import jakarta.annotation.PostConstruct;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import java.security.Key;
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Service
 public class JwtService {
+
+    private static final Logger log = LoggerFactory.getLogger(JwtService.class);
 
     @Value("${app.jwt.secret}")
     private String jwtSecret;
 
     @Value("${app.jwt.access-expiration-minutes:30}")
     private long accessTokenExpirationMinutes;
+
+    private final Environment environment;
+    private Key signingKey;
+
+    public JwtService(Environment environment) {
+        this.environment = environment;
+    }
+
+    @PostConstruct
+    void initializeSigningKey() {
+        if (StringUtils.hasText(jwtSecret)) {
+            signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
+            return;
+        }
+
+        boolean prodProfileActive = Arrays.stream(environment.getActiveProfiles())
+            .anyMatch("prod"::equalsIgnoreCase);
+
+        if (prodProfileActive) {
+            throw new IllegalStateException("JWT_SECRET is required when running with the prod profile");
+        }
+
+        byte[] secretBytes = new byte[64];
+        new SecureRandom().nextBytes(secretBytes);
+        signingKey = Keys.hmacShaKeyFor(secretBytes);
+        log.warn("JWT_SECRET is not configured. Using an in-memory JWT signing key for this runtime only.");
+    }
 
     public String generateAccessToken(String subject, Map<String, Object> claims) {
         return buildToken(subject, claims, Duration.ofMinutes(accessTokenExpirationMinutes));
@@ -72,7 +108,7 @@ public class JwtService {
     }
 
     private Key getSigningKey() {
-        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
+        return signingKey;
     }
 }
 

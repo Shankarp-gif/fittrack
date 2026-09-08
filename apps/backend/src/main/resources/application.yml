@@ -2,7 +2,7 @@ spring:
   application:
     name: fittrack-backend
   profiles:
-    active: dev
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   jpa:
     open-in-view: false
     hibernate:
@@ -23,14 +23,18 @@ management:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:ZmFrZS1kZXYtc2VjcmV0LXNob3VsZC1iZS1vdmVycmlkZGVuLWluLXByb2Q=}
+    secret: ${JWT_SECRET:}
     access-expiration-minutes: ${JWT_ACCESS_EXP_MIN:30}
+  cors:
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
+  security:
+    hide-user-not-found-exceptions: ${HIDE_USER_NOT_FOUND_EXCEPTIONS:true}
 
 logging:
   level:
     root: INFO
     com.fittrack.backend: INFO
-    org.springframework.security: DEBUG
+    org.springframework.security: INFO
   file:
     path: logs
     max-size: 10MB

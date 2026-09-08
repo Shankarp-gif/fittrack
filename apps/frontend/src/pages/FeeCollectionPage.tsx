@@ -1,24 +1,33 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { CreditCard, DollarSign, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import { api } from '../services/api'
 import type { FeeRecord, FeeCollection, PaymentTransaction } from '../types/fees'
+import { showCenteredSuccessModal } from '../components/common/CenteredSuccessModal'
 import '../styles/FeeCollectionPage.css'
 
 export function FeeCollectionPage() {
+  const [searchParams] = useSearchParams()
   const [feeCollection, setFeeCollection] = useState<FeeCollection | null>(null)
   const [feeRecords, setFeeRecords] = useState<FeeRecord[]>([])
   const [transactions, setTransactions] = useState<PaymentTransaction[]>([])
-  const [activeTab, setActiveTab] = useState<'overview' | 'pending' | 'transactions'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'pending' | 'transactions'>(
+    requestedTab === 'pending' ? 'pending' : 'overview'
+  )
   const [loading, setLoading] = useState(false)
   const [selectedFee, setSelectedFee] = useState<FeeRecord | null>(null)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [paymentAmount, setPaymentAmount] = useState('')
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'CASH' | 'UPI' | 'CARD' | 'CHEQUE'>('CASH')
+  const [transactionRef, setTransactionRef] = useState('')
+  const requestedMemberId = Number(searchParams.get('memberId') || '')
+  const requestedTab = searchParams.get('tab')
 
-  useEffect(() => {
-    fetchFeeData()
-  }, [])
+  const unwrapData = <T,>(payload: any): T => {
+    return (payload?.data ?? payload) as T
+  }
 
-  const fetchFeeData = async () => {
+  const fetchFeeData = useCallback(async () => {
     setLoading(true)
     try {
       const [collectionResponse, paymentsResponse] = await Promise.all([
@@ -26,7 +35,7 @@ export function FeeCollectionPage() {
         api.get('/api/payments?page=0&size=100').catch(() => ({ data: { content: [] } })),
       ])
 
-      const collectionData = collectionResponse.data
+      const collectionData = unwrapData<any>(collectionResponse.data)
       const collection: FeeCollection = collectionData ? {
         totalMembers: collectionData.totalMembers || 0,
         paidMembers: collectionData.totalPaidPayments || 0,
@@ -45,25 +54,29 @@ export function FeeCollectionPage() {
         collectionPercentage: 0,
       }
 
-      const paymentsData = paymentsResponse.data?.content || []
-      const feeRecords = paymentsData.map((p: any) => ({
+      const paymentsPayload = unwrapData<{ content?: any[] }>(paymentsResponse.data)
+      const paymentsData = Array.isArray(paymentsPayload?.content) ? paymentsPayload.content : []
+      const feeRecords: FeeRecord[] = paymentsData.map((p: any) => ({
         id: p.id,
+        memberId: Number(p.memberId) || 0,
         memberName: p.memberName,
         amount: parseFloat(p.finalAmount || 0),
         status: p.paymentStatus,
         dueDate: p.createdAt,
         paidDate: p.paidAt,
+        paymentMode: p.paymentMethod,
       }))
 
       const paidPayments = paymentsData.filter((p: any) => p.paymentStatus === 'PAID')
-      const transactions = paidPayments.map((p: any) => ({
+      const transactions: PaymentTransaction[] = paidPayments.map((p: any) => ({
         id: p.id,
+        memberId: Number(p.memberId) || 0,
         memberName: p.memberName,
         amount: parseFloat(p.finalAmount || 0),
         paymentDate: p.paidAt || new Date().toISOString(),
         paymentMode: p.paymentMethod,
         referenceNo: p.referenceNumber || p.receiptNumber || 'N/A',
-        status: 'COMPLETED',
+        status: 'SUCCESS',
       }))
 
       setFeeCollection(collection)
@@ -85,39 +98,108 @@ export function FeeCollectionPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    void fetchFeeData()
+  }, [fetchFeeData])
+
+  useEffect(() => {
+    if (!Number.isFinite(requestedMemberId) || requestedMemberId <= 0 || feeRecords.length === 0) {
+      return
+    }
+
+    const targetFee = feeRecords.find((fee) => fee.memberId === requestedMemberId && (fee.status === 'PENDING' || fee.status === 'OVERDUE'))
+      || feeRecords.find((fee) => fee.memberId === requestedMemberId)
+
+    if (targetFee) {
+      setSelectedFee(targetFee)
+      setPaymentAmount(targetFee.amount.toString())
+      setSelectedPaymentMethod(targetFee.paymentMode || 'CASH')
+      setTransactionRef('')
+      setShowPaymentModal(true)
+    }
+  }, [requestedMemberId, feeRecords])
 
   const handlePayment = async () => {
     if (selectedFee && paymentAmount) {
       try {
         setLoading(true)
-        // Extract member ID from fee record - REQUIRED
-        const memberId = (selectedFee as any).memberId
+        const memberId = Number(selectedFee.memberId)
+        const amount = parseFloat(paymentAmount)
+        const normalizedTransactionRef = transactionRef.trim()
+        const requiresTransactionId = selectedPaymentMethod === 'CARD' || selectedPaymentMethod === 'UPI'
 
-        if (!memberId) {
-          alert('Error: Member ID not found. Please select a valid fee record.')
+        if (!Number.isFinite(memberId) || memberId <= 0) {
+          showCenteredSuccessModal({
+            isOpen: true,
+            title: 'Invalid Member',
+            message: 'Member ID not found. Please select a valid fee record.',
+            type: 'error',
+            duration: 2500,
+          })
+          setLoading(false)
+          return
+        }
+
+        if (!Number.isFinite(amount) || amount <= 0) {
+          showCenteredSuccessModal({
+            isOpen: true,
+            title: 'Invalid Amount',
+            message: 'Please enter a valid payment amount.',
+            type: 'warning',
+            duration: 2200,
+          })
+          setLoading(false)
+          return
+        }
+
+        if (requiresTransactionId && !normalizedTransactionRef) {
+          showCenteredSuccessModal({
+            isOpen: true,
+            title: 'Reference Required',
+            message: 'Transaction/reference ID is required for CARD and UPI payments.',
+            type: 'warning',
+            duration: 2600,
+          })
           setLoading(false)
           return
         }
 
         const paymentRequest = {
-          memberId: memberId,
-          amount: parseFloat(paymentAmount),
-          paymentMethod: 'CASH',
+          memberId,
+          amount,
+          paymentMethod: selectedPaymentMethod,
           paymentStatus: 'PAID',
           paymentReason: 'MEMBERSHIP_RENEWAL',
+          ...(requiresTransactionId ? { transactionId: normalizedTransactionRef } : {}),
+          ...(normalizedTransactionRef ? { referenceNumber: normalizedTransactionRef } : {}),
         }
 
         await api.post('/api/payments', paymentRequest)
-        alert(`Payment of ₹${paymentAmount} processed for ${selectedFee.memberName}`)
+        showCenteredSuccessModal({
+          isOpen: true,
+          title: 'Payment Successful',
+          message: `Payment of ₹${paymentAmount} processed for ${selectedFee.memberName}`,
+          type: 'success',
+          duration: 2600,
+        })
         setShowPaymentModal(false)
         setPaymentAmount('')
+        setSelectedPaymentMethod('CASH')
+        setTransactionRef('')
         setSelectedFee(null)
         // Refresh the fee data
         await fetchFeeData()
       } catch (error) {
         console.error('Error processing payment:', error)
-        alert('Error processing payment. Please try again.')
+        showCenteredSuccessModal({
+          isOpen: true,
+          title: 'Payment Failed',
+          message: 'Error processing payment. Please try again.',
+          type: 'error',
+          duration: 2800,
+        })
       } finally {
         setLoading(false)
       }
@@ -262,6 +344,8 @@ export function FeeCollectionPage() {
                           onClick={() => {
                             setSelectedFee(fee)
                             setPaymentAmount(fee.amount.toString())
+                            setSelectedPaymentMethod(fee.paymentMode || 'CASH')
+                            setTransactionRef('')
                             setShowPaymentModal(true)
                           }}
                         >
@@ -316,6 +400,8 @@ export function FeeCollectionPage() {
                             onClick={() => {
                               setSelectedFee(fee)
                               setPaymentAmount(fee.amount.toString())
+                              setSelectedPaymentMethod(fee.paymentMode || 'CASH')
+                              setTransactionRef('')
                               setShowPaymentModal(true)
                             }}
                           >
@@ -398,14 +484,25 @@ export function FeeCollectionPage() {
 
               <div className="form-group">
                 <label>Payment Mode</label>
-                <select>
-                  <option>Select Payment Mode</option>
-                  <option>CASH</option>
-                  <option>UPI</option>
-                  <option>CARD</option>
-                  <option>CHEQUE</option>
+                <select value={selectedPaymentMethod} onChange={(e) => setSelectedPaymentMethod(e.target.value as 'CASH' | 'UPI' | 'CARD' | 'CHEQUE')}>
+                  <option value="CASH">CASH</option>
+                  <option value="UPI">UPI</option>
+                  <option value="CARD">CARD</option>
+                  <option value="CHEQUE">CHEQUE</option>
                 </select>
               </div>
+
+              {(selectedPaymentMethod === 'UPI' || selectedPaymentMethod === 'CARD') ? (
+                <div className="form-group">
+                  <label>Transaction / Reference ID</label>
+                  <input
+                    type="text"
+                    value={transactionRef}
+                    onChange={(e) => setTransactionRef(e.target.value)}
+                    placeholder={`Enter ${selectedPaymentMethod} reference`}
+                  />
+                </div>
+              ) : null}
 
               <div className="modal-actions">
                 <button className="btn-cancel" onClick={() => setShowPaymentModal(false)}>

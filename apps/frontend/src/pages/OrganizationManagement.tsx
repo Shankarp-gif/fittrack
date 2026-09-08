@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Edit2, Trash2, Plus, X, Check, AlertCircle } from 'lucide-react'
 import { api } from '../services/api'
 import { showCenteredSuccessModal } from '../components/common/CenteredSuccessModal'
@@ -44,6 +45,7 @@ interface CreateOrgRequest {
 }
 
 export function OrganizationManagement() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(false)
@@ -61,17 +63,50 @@ export function OrganizationManagement() {
   const [searchTerm, setSearchTerm] = useState('')
   const [sortBy, setSortBy] = useState<'name' | 'createdAt'>('name')
   const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('all')
+  const [handledDeepLink, setHandledDeepLink] = useState(false)
 
   useEffect(() => {
     fetchOrganizations()
     fetchCategories()
   }, [])
 
-  const fetchOrganizations = async () => {
+  useEffect(() => {
+    if (handledDeepLink || organizations.length === 0) {
+      return
+    }
+
+    const deepOrgId = Number(searchParams.get('orgId'))
+    const deepMode = searchParams.get('mode')
+    if (!deepOrgId) {
+      setHandledDeepLink(true)
+      return
+    }
+
+    const matched = organizations.find((org) => org.id === deepOrgId)
+    if (!matched) {
+      setHandledDeepLink(true)
+      return
+    }
+
+    if (deepMode === 'edit') {
+      handleEdit(matched)
+    } else {
+      setSearchTerm(matched.name)
+    }
+
+    setHandledDeepLink(true)
+    const params = new URLSearchParams(searchParams)
+    params.delete('orgId')
+    params.delete('mode')
+    setSearchParams(params, { replace: true })
+  }, [handledDeepLink, organizations, searchParams, setSearchParams])
+
+  async function fetchOrganizations() {
     setLoading(true)
     try {
       const response = await api.get('/api/users/organization/all')
-      setOrganizations(Array.isArray(response.data) ? response.data : [])
+      const payload = response.data?.data || response.data
+      setOrganizations(Array.isArray(payload) ? payload : [])
     } catch (error) {
       console.error('Error fetching organizations:', error)
       showCenteredSuccessModal({
@@ -86,11 +121,12 @@ export function OrganizationManagement() {
     }
   }
 
-  const fetchCategories = async () => {
+  async function fetchCategories() {
     try {
       const response = await api.get('/api/organization-categories').catch(() => ({ data: [] }))
-      setCategories(Array.isArray(response.data) ? response.data : [])
-    } catch (error) {
+      const payload = response.data?.data || response.data
+      setCategories(Array.isArray(payload) ? payload : [])
+    } catch {
       console.log('Categories not available yet')
     }
   }
@@ -140,7 +176,7 @@ export function OrganizationManagement() {
     }
   }
 
-  const handleEdit = (org: Organization) => {
+  function handleEdit(org: Organization) {
     setEditingId(org.id)
     setFormData({
       name: org.name,
@@ -170,7 +206,7 @@ export function OrganizationManagement() {
           duration: 3000,
         })
         await fetchOrganizations()
-      } catch (error) {
+      } catch {
         showCenteredSuccessModal({
           isOpen: true,
           title: 'Error',
@@ -241,7 +277,7 @@ export function OrganizationManagement() {
               placeholder="Search by name, email, or city..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
+              className="org-search-input"
             />
           </div>
 
@@ -277,6 +313,7 @@ export function OrganizationManagement() {
             </button>
           </div>
         ) : (
+          <div className="orgs-table-wrap">
           <table className="orgs-table">
             <thead>
               <tr>
@@ -320,6 +357,7 @@ export function OrganizationManagement() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </section>
 

@@ -19,6 +19,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     // Find by organization
     Page<Payment> findByOrganizationId(Long organizationId, Pageable pageable);
 
+    Optional<Payment> findByIdAndOrganizationId(Long id, Long organizationId);
+
     // Find by organization and date range
     @Query("SELECT p FROM Payment p WHERE p.organization.id = :orgId AND p.createdAt >= :startDate AND p.createdAt <= :endDate ORDER BY p.createdAt DESC")
     Page<Payment> findByOrganizationIdAndDateRange(@Param("orgId") Long orgId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate, Pageable pageable);

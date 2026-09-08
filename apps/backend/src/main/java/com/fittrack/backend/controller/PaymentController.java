@@ -160,8 +160,11 @@ public class PaymentController {
      */
     @PostMapping("/{id}/mark-paid")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','GYM_MAINTENANCE_MANAGER')")
-    public ResponseEntity<ApiResponse<PaymentDTO>> markPaymentAsPaid(@PathVariable Long id) {
-        PaymentDTO payment = paymentService.markPaymentAsPaid(id);
+    public ResponseEntity<ApiResponse<PaymentDTO>> markPaymentAsPaid(
+        @PathVariable Long id,
+        Authentication authentication) {
+        Long orgId = authContextHelper.getOrganizationId(authentication);
+        PaymentDTO payment = paymentService.markPaymentAsPaid(orgId, id);
         return ResponseEntity.ok(ApiResponse.success("Payment marked as paid", payment));
     }
 
@@ -172,8 +175,10 @@ public class PaymentController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','GYM_MAINTENANCE_MANAGER')")
     public ResponseEntity<ApiResponse<PaymentDTO>> updatePayment(
         @PathVariable Long id,
-        @Valid @RequestBody CreatePaymentRequest request) {
-        PaymentDTO payment = paymentService.updatePayment(id, request);
+        @Valid @RequestBody CreatePaymentRequest request,
+        Authentication authentication) {
+        Long orgId = authContextHelper.getOrganizationId(authentication);
+        PaymentDTO payment = paymentService.updatePayment(orgId, id, request);
         return ResponseEntity.ok(ApiResponse.success("Payment updated successfully", payment));
     }
 
@@ -182,8 +187,11 @@ public class PaymentController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> deletePayment(@PathVariable Long id) {
-        paymentService.deletePayment(id);
+    public ResponseEntity<ApiResponse<Void>> deletePayment(
+        @PathVariable Long id,
+        Authentication authentication) {
+        Long orgId = authContextHelper.getOrganizationId(authentication);
+        paymentService.deletePayment(orgId, id);
         return ResponseEntity.ok(ApiResponse.success("Payment deleted successfully", null));
     }
 

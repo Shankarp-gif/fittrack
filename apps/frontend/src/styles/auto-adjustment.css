@@ -111,7 +111,6 @@ button[type="submit"] {
 
 /* Button Text wrapping fix */
 .action-text,
-button span,
 .btn-text {
   white-space: normal;
   word-break: break-word;

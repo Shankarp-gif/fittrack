@@ -3,6 +3,9 @@
   padding: var(--spacing-2xl);
   background: var(--bg-primary);
   min-height: 100vh;
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }
 
 /* Check-In Success Modal */
@@ -230,6 +233,15 @@
   text-overflow: ellipsis;
 }
 
+/* Keep hero and quick cards anchored to content start. */
+.welcome-section,
+.quick-stats,
+.member-content-grid {
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
+
 /* Quick Stats - Enhanced Cards */
 .quick-stats {
   display: grid;
@@ -359,6 +371,13 @@
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: var(--spacing-lg);
+  width: 100%;
+}
+
+/* Keep columns from forcing horizontal overflow in dense card layouts. */
+.left-column,
+.right-column {
+  min-width: 0;
 }
 
 @media (max-width: 1200px) {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import axios from 'axios'
 import { Link, useNavigate } from 'react-router-dom'
@@ -8,11 +8,17 @@ import { useAuth } from '../context/AuthContext'
 export function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
-  const [email, setEmail] = useState('admin@fittrack.app')
-  const [password, setPassword] = useState('admin123')
-  const [rememberSession, setRememberSession] = useState(true)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [rememberSession, setRememberSession] = useState(false)
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+
+  useEffect(() => {
+    // Force-clear controlled credentials on mount to avoid stale browser restore.
+    setEmail('')
+    setPassword('')
+  }, [])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -47,16 +53,27 @@ export function LoginPage() {
 
   return (
     <div className="auth-page">
-      <form className="auth-card" onSubmit={handleSubmit}>
+      <form className="auth-card" onSubmit={handleSubmit} autoComplete="off">
         <h1>Welcome back</h1>
          <label>Email</label>
-         <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
+         <input
+           value={email}
+           onChange={(e) => setEmail(e.target.value)}
+           type="email"
+           name="loginIdentifier"
+           placeholder="Enter your username or email"
+           autoComplete="off"
+           required
+         />
          <label>Password</label>
          <div className="password-input-wrapper">
            <input
              value={password}
              onChange={(e) => setPassword(e.target.value)}
              type={showPassword ? 'text' : 'password'}
+             name="loginPassword"
+             placeholder="Enter your password"
+             autoComplete="new-password"
              required
            />
            <button

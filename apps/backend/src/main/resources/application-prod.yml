@@ -5,6 +5,13 @@ spring:
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
+server:
+  forward-headers-strategy: framework
+
+app:
+  cors:
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS}
+
 logging:
   level:
     root: INFO

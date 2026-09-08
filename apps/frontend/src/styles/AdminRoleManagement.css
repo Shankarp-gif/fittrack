@@ -194,6 +194,7 @@
 
 .users-role-table {
   width: 100%;
+  min-width: 860px;
   border-collapse: collapse;
 }
 
@@ -536,6 +537,26 @@
 
   .user-email {
     display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-role-management {
+    padding: var(--spacing-md);
+  }
+
+  .role-management-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .role-management-filters {
+    gap: var(--spacing-md);
+  }
+
+  .filter-input,
+  .filter-select {
+    min-width: 0;
+    width: 100%;
   }
 }
 

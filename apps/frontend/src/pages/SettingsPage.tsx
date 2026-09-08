@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
+import { BellRing, Palette, Sparkles, Target } from 'lucide-react'
 import { settingsService } from '../services/userService'
 import { useTheme } from '../context/ThemeContext'
 import type { AppSettings } from '../types/auth'
@@ -103,7 +104,8 @@ export function SettingsPage() {
       <section className="panel settings-hero">
         <div className="settings-hero-head">
           <div>
-            <h1>Settings</h1>
+            <p className="settings-kicker"><Sparkles size={14} /> Personalization</p>
+            <h1 className="settings-title">Settings</h1>
             <p className="muted">Adjust app experience, reminders, and display preferences.</p>
           </div>
           <span className={`badge ${hasUnsavedChanges ? 'badge-warning' : 'badge-success'}`}>
@@ -122,7 +124,10 @@ export function SettingsPage() {
       </section>
 
       <section className="panel stack-gap settings-section">
-        <h2>Appearance</h2>
+        <div className="settings-section-head">
+          <h2><Palette size={18} /> Appearance</h2>
+          <p className="muted">Theme and readability controls for comfortable viewing.</p>
+        </div>
         <div className="profile-grid settings-grid">
           <label>
             Theme
@@ -153,7 +158,10 @@ export function SettingsPage() {
       </section>
 
       <section className="panel stack-gap settings-section">
-        <h2>Training Preferences</h2>
+        <div className="settings-section-head">
+          <h2><Target size={18} /> Training Preferences</h2>
+          <p className="muted">Set reminders and weekly targets that match your routine.</p>
+        </div>
         <form className="profile-grid settings-grid" onSubmit={handleSubmit}>
           <label className="check-row settings-checkbox-row">
             <input
@@ -162,7 +170,7 @@ export function SettingsPage() {
               onChange={(e) => setSettings({ ...settings, reminderEnabled: e.target.checked })}
             />
             <span>
-              <strong>Daily workout reminder</strong>
+              <strong><BellRing size={15} /> Daily workout reminder</strong>
               <small className="muted settings-field-help">Send a daily prompt to keep your streak active.</small>
             </span>
           </label>

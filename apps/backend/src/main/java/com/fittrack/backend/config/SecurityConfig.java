@@ -1,9 +1,11 @@
 package com.fittrack.backend.config;
 
 import com.fittrack.backend.security.JwtAuthenticationFilter;
+import java.util.Arrays;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -28,10 +30,19 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserDetailsService userDetailsService;
+    private final String allowedOriginPatterns;
+    private final boolean hideUserNotFoundExceptions;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, UserDetailsService userDetailsService) {
+    public SecurityConfig(
+        JwtAuthenticationFilter jwtAuthenticationFilter,
+        UserDetailsService userDetailsService,
+        @Value("${app.cors.allowed-origin-patterns:http://localhost:*,http://127.0.0.1:*}") String allowedOriginPatterns,
+        @Value("${app.security.hide-user-not-found-exceptions:true}") boolean hideUserNotFoundExceptions
+    ) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.userDetailsService = userDetailsService;
+        this.allowedOriginPatterns = allowedOriginPatterns;
+        this.hideUserNotFoundExceptions = hideUserNotFoundExceptions;
     }
 
     @Bean
@@ -63,7 +74,7 @@ public class SecurityConfig {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder());
-        provider.setHideUserNotFoundExceptions(false);
+        provider.setHideUserNotFoundExceptions(hideUserNotFoundExceptions);
         return provider;
     }
 
@@ -75,13 +86,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // Allow development and common deployment patterns
-        config.setAllowedOriginPatterns(List.of(
-            "http://localhost:*",           // Dev - Desktop
-            "http://127.0.0.1:*",           // Dev - Localhost
-            "http://*:*",                   // Dev - Any local IP/port
-            "https://*"                     // Production - Any HTTPS origin
-        ));
+        List<String> originPatterns = Arrays.stream(allowedOriginPatterns.split(","))
+            .map(String::trim)
+            .filter(value -> !value.isEmpty())
+            .toList();
+        config.setAllowedOriginPatterns(originPatterns);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization", "Content-Type", "X-Total-Count", "X-Page-Count"));

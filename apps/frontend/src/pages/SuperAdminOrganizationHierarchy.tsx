@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Building2,
   ChevronRight,
@@ -63,6 +64,7 @@ interface CreateOrgRequest {
 }
 
 export function SuperAdminOrganizationHierarchy() {
+  const [searchParams, setSearchParams] = useSearchParams()
   // Navigation State
   const [view, setView] = useState<'organizations' | 'organization-detail'>('organizations')
   const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null)
@@ -88,16 +90,40 @@ export function SuperAdminOrganizationHierarchy() {
   // Filters
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRole, setFilterRole] = useState<GymRole | ''>('')
+  const [handledDeepLink, setHandledDeepLink] = useState(false)
 
   useEffect(() => {
     fetchOrganizations()
   }, [])
 
-  const fetchOrganizations = async () => {
+  useEffect(() => {
+    if (handledDeepLink || organizations.length === 0) {
+      return
+    }
+
+    const deepOrgId = Number(searchParams.get('orgId'))
+    if (!deepOrgId) {
+      setHandledDeepLink(true)
+      return
+    }
+
+    const matchedOrg = organizations.find((org) => org.id === deepOrgId)
+    if (matchedOrg) {
+      handleSelectOrganization(matchedOrg)
+    }
+
+    setHandledDeepLink(true)
+    const params = new URLSearchParams(searchParams)
+    params.delete('orgId')
+    setSearchParams(params, { replace: true })
+  }, [handledDeepLink, organizations, searchParams, setSearchParams])
+
+  async function fetchOrganizations() {
     setLoading(true)
     try {
       const response = await api.get('/api/users/organization/all')
-      setOrganizations(Array.isArray(response.data) ? response.data : [])
+      const payload = response.data?.data || response.data
+      setOrganizations(Array.isArray(payload) ? payload : [])
     } catch (error) {
       console.error('Error fetching organizations:', error)
       showCenteredSuccessModal({
@@ -112,10 +138,11 @@ export function SuperAdminOrganizationHierarchy() {
     }
   }
 
-  const fetchOrganizationUsers = async (orgId: number) => {
+  async function fetchOrganizationUsers(orgId: number) {
     try {
       const response = await api.get(`/api/users/organization/${orgId}/users`)
-      setUsers(Array.isArray(response.data) ? response.data : [])
+      const payload = response.data?.data || response.data
+      setUsers(Array.isArray(payload) ? payload : [])
     } catch (error) {
       console.error('Error fetching users:', error)
       showCenteredSuccessModal({
@@ -129,7 +156,7 @@ export function SuperAdminOrganizationHierarchy() {
     }
   }
 
-  const handleSelectOrganization = (org: Organization) => {
+  function handleSelectOrganization(org: Organization) {
     setSelectedOrganization(org)
     setView('organization-detail')
     fetchOrganizationUsers(org.id)
@@ -220,7 +247,7 @@ export function SuperAdminOrganizationHierarchy() {
           duration: 3000,
         })
         await fetchOrganizations()
-      } catch (error) {
+      } catch {
         showCenteredSuccessModal({
           isOpen: true,
           title: 'Error',

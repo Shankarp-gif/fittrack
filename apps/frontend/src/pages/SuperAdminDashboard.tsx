@@ -51,6 +51,7 @@ export function SuperAdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [modalType, setModalType] = useState<'organization' | 'admin'>('organization')
+  const [formError, setFormError] = useState('')
 
   // Form states
   const [formData, setFormData] = useState({
@@ -120,6 +121,7 @@ export function SuperAdminDashboard() {
   const handleCreateClick = (type: 'organization' | 'admin') => {
     setModalType(type)
     setShowCreateModal(true)
+    setFormError('')
     setFormData({
       name: '',
       email: '',
@@ -152,7 +154,7 @@ export function SuperAdminDashboard() {
       if (modalType === 'organization') {
         // Validate required fields
         if (!formData.name || !formData.email || !formData.city || !formData.country) {
-          alert('Please fill in all required fields')
+          setFormError('Please fill in all required fields for organization setup.')
           setLoading(false)
           return
         }
@@ -183,14 +185,14 @@ export function SuperAdminDashboard() {
       } else {
         // Create admin via API
         if (!formData.fullName || !formData.email || !formData.password || !formData.organizationId) {
-          alert('Please fill in all required fields')
+          setFormError('Please fill in all required fields for administrator creation.')
           setLoading(false)
           return
         }
 
         const selectedOrg = organizations.find((o) => o.id === parseInt(formData.organizationId))
         if (!selectedOrg) {
-          alert('Please select a valid organization')
+          setFormError('Please select a valid organization before continuing.')
           setLoading(false)
           return
         }
@@ -216,10 +218,11 @@ export function SuperAdminDashboard() {
       }
 
       setShowCreateModal(false)
+      setFormError('')
     } catch (error: any) {
       console.error('Error creating:', error)
       const errorMessage = error.response?.data?.message || error.message || 'Failed to create'
-      alert(`Error: ${errorMessage}`)
+      setFormError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -288,7 +291,7 @@ export function SuperAdminDashboard() {
   )
 
   const handleViewOrganization = (orgId: number) => {
-    navigate(`/organizations?orgId=${orgId}`)
+    navigate(`/organizations-hierarchy?orgId=${orgId}`)
   }
 
   const handleEditOrganization = (orgId: number) => {
@@ -385,14 +388,14 @@ export function SuperAdminDashboard() {
 
       {/* Search Bar */}
       <div className="search-section">
-        <div className="search-container">
+        <div className="sa-search-container">
           <Search size={20} />
           <input
             type="text"
             placeholder={`Search ${activeTab === 'organizations' ? 'organizations' : 'admins'}...`}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
+            className="sa-search-input"
           />
         </div>
       </div>
@@ -537,16 +540,24 @@ export function SuperAdminDashboard() {
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
+        <div className="modal-overlay" onClick={() => {
+          setShowCreateModal(false)
+          setFormError('')
+        }}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>
                 {modalType === 'organization' ? 'Create Organization' : 'Create Administrator'}
               </h2>
-              <button className="close-btn" onClick={() => setShowCreateModal(false)}>
+              <button className="close-btn" onClick={() => {
+                setShowCreateModal(false)
+                setFormError('')
+              }}>
                 ×
               </button>
             </div>
+
+            {formError ? <p className="modal-error">{formError}</p> : null}
 
             <form onSubmit={handleCreateSubmit} className="modal-form">
               {modalType === 'organization' ? (
@@ -715,7 +726,10 @@ export function SuperAdminDashboard() {
               )}
 
               <div className="modal-actions">
-                <button type="button" className="btn secondary" onClick={() => setShowCreateModal(false)}>
+                <button type="button" className="btn secondary" onClick={() => {
+                  setShowCreateModal(false)
+                  setFormError('')
+                }}>
                   Cancel
                 </button>
                 <button type="submit" className="btn primary">

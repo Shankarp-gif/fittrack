@@ -1,5 +1,6 @@
 /* Premium Layout Structure */
 .premium-layout {
+  --layout-sidebar-width: var(--sidebar-width);
   display: flex;
   height: 100vh;
   width: 100%;
@@ -7,23 +8,37 @@
   overflow: hidden;
 }
 
+.premium-layout.sidebar-collapsed {
+  --layout-sidebar-width: var(--sidebar-width-collapsed);
+}
+
 /* Main Content Area */
 .main-content {
-  flex: 1;
-  margin-left: 280px;
+  /* Keep content math tied to the same sidebar width used by top nav. */
+  width: calc(100% - var(--layout-sidebar-width));
+  max-width: calc(100% - var(--layout-sidebar-width));
+  margin-left: var(--layout-sidebar-width);
   margin-top: var(--topnav-height);
   overflow-y: auto;
   overflow-x: hidden;
-  transition: margin-left 0.3s ease-in-out;
+  transition: margin-left 0.3s ease-in-out, width 0.3s ease-in-out;
+}
+
+.premium-layout .topnav {
+  left: var(--layout-sidebar-width);
+  width: calc(100% - var(--layout-sidebar-width));
+  right: auto;
 }
 
 /* Collapsed Sidebar State */
 .premium-layout.sidebar-collapsed .main-content {
-  margin-left: 80px;
+  width: calc(100% - var(--layout-sidebar-width));
+  max-width: calc(100% - var(--layout-sidebar-width));
+  margin-left: var(--layout-sidebar-width);
 }
 
 .premium-layout.sidebar-collapsed .topnav {
-  left: 80px;
+  left: var(--layout-sidebar-width);
 }
 
 .content-wrapper {
@@ -81,16 +96,19 @@
 }
 
 @media (max-width: 768px) {
-  .main-content {
-    margin-left: 70px;
+  .premium-layout,
+  .premium-layout.sidebar-collapsed {
+    --layout-sidebar-width: 70px;
   }
 
-  .premium-layout.sidebar-collapsed .main-content {
-    margin-left: 70px;
+  .main-content {
+    width: calc(100% - var(--layout-sidebar-width));
+    max-width: calc(100% - var(--layout-sidebar-width));
+    margin-left: var(--layout-sidebar-width);
   }
 
   .premium-layout.sidebar-collapsed .topnav {
-    left: 70px;
+    left: var(--layout-sidebar-width);
   }
 
   .content-wrapper {
@@ -112,16 +130,19 @@
 }
 
 @media (max-width: 480px) {
-  .main-content {
-    margin-left: 60px;
+  .premium-layout,
+  .premium-layout.sidebar-collapsed {
+    --layout-sidebar-width: 60px;
   }
 
-  .premium-layout.sidebar-collapsed .main-content {
-    margin-left: 60px;
+  .main-content {
+    width: calc(100% - var(--layout-sidebar-width));
+    max-width: calc(100% - var(--layout-sidebar-width));
+    margin-left: var(--layout-sidebar-width);
   }
 
   .premium-layout.sidebar-collapsed .topnav {
-    left: 60px;
+    left: var(--layout-sidebar-width);
   }
 
   .content-wrapper {

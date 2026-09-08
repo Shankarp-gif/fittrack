@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Calendar, LogIn, LogOut, TrendingUp } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { showCenteredSuccessModal } from '../components/common/CenteredSuccessModal'
 import type { AttendanceRecord, AttendanceStats } from '../types/attendance'
@@ -34,6 +35,7 @@ interface AttendanceDetailsModalData {
 
 export function AttendancePage() {
   const { user } = useAuth()
+  const [searchParams] = useSearchParams()
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
   const [stats, setStats] = useState<AttendanceStats | null>(null)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
@@ -44,6 +46,10 @@ export function AttendancePage() {
   const [isCheckingOut, setIsCheckingOut] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null)
 
+  const requestedMemberId = Number(searchParams.get('memberId') || '')
+  const memberIdFromQuery = Number.isFinite(requestedMemberId) && requestedMemberId > 0 ? requestedMemberId : null
+  const effectiveMemberIdForCheckin = memberIdFromQuery ?? memberIdForCheckin
+
   const canCheckIn = !todayAttendance
   const canCheckOut = todayAttendance?.status === 'CHECKED_IN'
   const checkInTitle = canCheckIn
@@ -53,13 +59,9 @@ export function AttendancePage() {
     ? 'Mark today\'s check-out'
     : 'Check-out is available only after a successful check-in.'
 
-  useEffect(() => {
-    fetchAttendanceRecords()
-  }, [selectedDate, user?.id, user?.role, memberIdForCheckin])
-
-  const resolveMemberIdForUser = async (): Promise<number | null> => {
-    if (memberIdForCheckin) {
-      return memberIdForCheckin
+  const resolveMemberIdForUser = useCallback(async (): Promise<number | null> => {
+    if (effectiveMemberIdForCheckin) {
+      return effectiveMemberIdForCheckin
     }
 
     if (!user?.email || user?.role !== 'USER') {
@@ -73,9 +75,9 @@ export function AttendancePage() {
 
     setMemberIdForCheckin(member.id)
     return member.id
-  }
+  }, [effectiveMemberIdForCheckin, user?.email, user?.role])
 
-  const fetchAttendanceRecords = async () => {
+  const fetchAttendanceRecords = useCallback(async () => {
     setLoading(true)
     try {
       const recordsPromise = attendanceService.getRecordsByDate(selectedDate)
@@ -113,20 +115,13 @@ export function AttendancePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [resolveMemberIdForUser, selectedDate, user?.role])
 
-  // Fetch today's attendance status on mount
   useEffect(() => {
-    if (user?.id) {
-      fetchTodayAttendance()
-      // If user is a member, fetch their member ID
-      if (user?.role === 'USER') {
-        fetchMemberIdForUser()
-      }
-    }
-  }, [user?.id, user?.role])
+    void fetchAttendanceRecords()
+  }, [fetchAttendanceRecords])
 
-  const fetchMemberIdForUser = async () => {
+  const fetchMemberIdForUser = useCallback(async () => {
     try {
       const memberId = await resolveMemberIdForUser()
       if (!memberId) {
@@ -135,10 +130,10 @@ export function AttendancePage() {
     } catch (error) {
       console.error('Error fetching member ID:', error)
     }
-  }
+  }, [resolveMemberIdForUser])
 
 
-  const fetchTodayAttendance = async () => {
+  const fetchTodayAttendance = useCallback(async () => {
     try {
       const memberId = await resolveMemberIdForUser()
 
@@ -159,9 +154,19 @@ export function AttendancePage() {
     } catch (error) {
       console.error('Error fetching today attendance:', error)
     }
-  }
+  }, [resolveMemberIdForUser])
 
-  const formatTime = (dateTimeString: string): string => {
+  // Fetch today's attendance status on mount
+  useEffect(() => {
+    if (user?.id) {
+      void fetchTodayAttendance()
+      if (user?.role === 'USER') {
+        void fetchMemberIdForUser()
+      }
+    }
+  }, [fetchMemberIdForUser, fetchTodayAttendance, user?.id, user?.role])
+
+  function formatTime(dateTimeString: string): string {
     const date = new Date(dateTimeString)
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   }
@@ -234,7 +239,7 @@ export function AttendancePage() {
   }
 
    const handleCheckIn = async () => {
-    if (!memberIdForCheckin) {
+    if (!effectiveMemberIdForCheckin) {
       showCenteredSuccessModal({
         isOpen: true,
         title: 'Error',
@@ -247,7 +252,7 @@ export function AttendancePage() {
 
     setIsCheckingIn(true)
     try {
-      const data = await attendanceService.checkIn(memberIdForCheckin)
+      const data = await attendanceService.checkIn(effectiveMemberIdForCheckin)
       const checkInTime = formatTime(data.checkInTime)
 
       showCenteredSuccessModal({
@@ -281,7 +286,7 @@ export function AttendancePage() {
   }
 
   const handleCheckOut = async () => {
-    if (!memberIdForCheckin) {
+    if (!effectiveMemberIdForCheckin) {
       showCenteredSuccessModal({
         isOpen: true,
         title: 'Error',
@@ -294,7 +299,7 @@ export function AttendancePage() {
 
     setIsCheckingOut(true)
     try {
-      const data = await attendanceService.checkOut(memberIdForCheckin)
+      const data = await attendanceService.checkOut(effectiveMemberIdForCheckin)
       const checkOutTime = formatTime(data.checkOutTime || '')
 
       showCenteredSuccessModal({

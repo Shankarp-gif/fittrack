@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 interface ModalProps {
   isOpen: boolean
@@ -19,6 +20,27 @@ export function Modal({
   size = 'md',
   closeOnBackdrop = true,
 }: ModalProps) {
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    const body = document.body
+    const previousOverflow = body.style.overflow
+    const previousPaddingRight = body.style.paddingRight
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
+
+    body.style.overflow = 'hidden'
+    if (scrollbarWidth > 0) {
+      body.style.paddingRight = `${scrollbarWidth}px`
+    }
+
+    return () => {
+      body.style.overflow = previousOverflow
+      body.style.paddingRight = previousPaddingRight
+    }
+  }, [isOpen])
+
   if (!isOpen) return null
 
   const sizeClass = {
@@ -27,9 +49,10 @@ export function Modal({
     lg: 'w-full max-w-4xl',
   }[size]
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4"
+      style={{ zIndex: 2000 }}
       onClick={closeOnBackdrop ? onClose : undefined}
     >
       <div
@@ -50,5 +73,6 @@ export function Modal({
       </div>
     </div>
   )
-}
 
+  return createPortal(modalContent, document.body)
+}

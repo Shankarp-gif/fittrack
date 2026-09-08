@@ -6,17 +6,17 @@ import com.fittrack.backend.entity.Member;
 import com.fittrack.backend.entity.Membership;
 import com.fittrack.backend.entity.Organization;
 import com.fittrack.backend.entity.Payment;
-import com.fittrack.backend.entity.User;
+import com.fittrack.backend.entity.enums.MemberStatus;
 import com.fittrack.backend.exception.BadRequestException;
 import com.fittrack.backend.exception.ResourceNotFoundException;
 import com.fittrack.backend.repository.MemberRepository;
 import com.fittrack.backend.repository.MembershipRepository;
 import com.fittrack.backend.repository.OrganizationRepository;
 import com.fittrack.backend.repository.PaymentRepository;
-import com.fittrack.backend.repository.UserRepository;
 import com.fittrack.backend.service.PaymentCollectionSummary;
 import com.fittrack.backend.service.PaymentService;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -35,7 +35,6 @@ public class PaymentServiceImpl implements PaymentService {
     private final MemberRepository memberRepository;
     private final MembershipRepository membershipRepository;
     private final OrganizationRepository organizationRepository;
-    private final UserRepository userRepository;
 
     @Override
     public PaymentDTO createPayment(Long organizationId, CreatePaymentRequest request) {
@@ -74,7 +73,7 @@ public class PaymentServiceImpl implements PaymentService {
             throw new BadRequestException("TRANSACTION_ID_REQUIRED", "Transaction ID is required for CARD and UPI payments");
         }
 
-        boolean isCardOrUpiConfirmed = ("CARD".equals(paymentMethod) || "UPI".equals(paymentMethod)) && hasTransactionId;
+        boolean isCardOrUpiConfirmed = "CARD".equals(paymentMethod) || "UPI".equals(paymentMethod);
 
         if ("CASH".equals(paymentMethod) || isCardOrUpiConfirmed) {
             payment.setPaymentStatus("PAID");
@@ -91,7 +90,16 @@ public class PaymentServiceImpl implements PaymentService {
         if (request.getMembershipId() != null) {
             Membership membership = membershipRepository.findById(request.getMembershipId())
                 .orElseThrow(() -> new ResourceNotFoundException("Membership not found"));
+
+            if (!membership.getMember().getId().equals(member.getId())) {
+                throw new BadRequestException("MEMBERSHIP_MEMBER_MISMATCH", "Membership does not belong to the provided member");
+            }
+
             payment.setMembership(membership);
+        }
+
+        if ("PAID".equals(payment.getPaymentStatus())) {
+            syncMembershipStatusAfterPayment(payment);
         }
 
         Payment saved = paymentRepository.save(payment);
@@ -144,8 +152,8 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public PaymentDTO markPaymentAsPaid(Long paymentId) {
-        Payment payment = paymentRepository.findById(paymentId)
+    public PaymentDTO markPaymentAsPaid(Long organizationId, Long paymentId) {
+        Payment payment = paymentRepository.findByIdAndOrganizationId(paymentId, organizationId)
             .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
 
         payment.setPaymentStatus("PAID");
@@ -156,13 +164,15 @@ public class PaymentServiceImpl implements PaymentService {
             payment.setReceiptNumber(generateReceiptNumber(payment.getOrganization().getId()));
         }
 
+        syncMembershipStatusAfterPayment(payment);
+
         Payment updated = paymentRepository.save(payment);
         return toDTO(updated);
     }
 
     @Override
-    public PaymentDTO updatePayment(Long paymentId, CreatePaymentRequest request) {
-        Payment payment = paymentRepository.findById(paymentId)
+    public PaymentDTO updatePayment(Long organizationId, Long paymentId, CreatePaymentRequest request) {
+        Payment payment = paymentRepository.findByIdAndOrganizationId(paymentId, organizationId)
             .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
 
         payment.setAmount(request.getAmount());
@@ -266,8 +276,8 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public void deletePayment(Long paymentId) {
-        Payment payment = paymentRepository.findById(paymentId)
+    public void deletePayment(Long organizationId, Long paymentId) {
+        Payment payment = paymentRepository.findByIdAndOrganizationId(paymentId, organizationId)
             .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
         payment.setActive(false);
         paymentRepository.save(payment);
@@ -282,6 +292,38 @@ public class PaymentServiceImpl implements PaymentService {
         // This would typically check membership expiry dates
         // For now, return 0
         return 0;
+    }
+
+    private void syncMembershipStatusAfterPayment(Payment payment) {
+        Membership membership = payment.getMembership();
+        if (membership == null) {
+            return;
+        }
+
+        MemberStatus targetStatus = determineMembershipStatusFromEndDate(membership.getEndDate());
+        membership.setStatus(targetStatus);
+        membership.setActive(true);
+        membershipRepository.save(membership);
+
+        Member membershipMember = membership.getMember();
+        if (membershipMember != null) {
+            membershipMember.setStatus(targetStatus);
+            memberRepository.save(membershipMember);
+        }
+    }
+
+    private MemberStatus determineMembershipStatusFromEndDate(LocalDate endDate) {
+        LocalDate today = LocalDate.now();
+
+        if (endDate == null || endDate.isBefore(today)) {
+            return MemberStatus.EXPIRED;
+        }
+
+        if (!endDate.isAfter(today.plusDays(7))) {
+            return MemberStatus.EXPIRING_SOON;
+        }
+
+        return MemberStatus.ACTIVE;
     }
 
     private PaymentDTO toDTO(Payment payment) {

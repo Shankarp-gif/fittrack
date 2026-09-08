@@ -38,7 +38,8 @@ export function AdminRoleManagement() {
     try {
       setLoading(true)
       const response = await api.get('/api/users/all')
-      setUsers(Array.isArray(response.data) ? response.data : [])
+      const payload = response.data?.data || response.data
+      setUsers(Array.isArray(payload) ? payload : [])
     } catch (error: any) {
       console.error('Error fetching users:', error)
       showCenteredSuccessModal({

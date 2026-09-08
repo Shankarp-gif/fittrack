@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   CheckCircle,
@@ -59,12 +59,6 @@ export function MemberDashboard() {
   const [notifications, setNotifications] = useState<MemberDashboardNotification[]>([])
   const [notificationsError, setNotificationsError] = useState('')
 
-  useEffect(() => {
-    if (user?.email) {
-      fetchDashboardData()
-    }
-  }, [user?.email])
-
   const mapMembershipDetail = (membership: any): MembershipDetail => {
     const endDate = membership.endDate ? new Date(membership.endDate) : null
     const now = new Date()
@@ -90,7 +84,7 @@ export function MemberDashboard() {
     }
   }
 
-  const resolveMemberId = async (): Promise<number | null> => {
+  const resolveMemberId = useCallback(async (): Promise<number | null> => {
     if (memberId) {
       return memberId
     }
@@ -112,9 +106,9 @@ export function MemberDashboard() {
       setOrganizationName(`Organization #${member.organizationId}`)
     }
     return member.id
-  }
+  }, [memberId, user?.email])
 
-  const fetchCurrentMembership = async () => {
+  const fetchCurrentMembership = useCallback(async () => {
     try {
       const response = await api.get('/api/memberships/my').catch(() => ({ data: null }))
       const payload = response.data?.data || response.data
@@ -136,9 +130,9 @@ export function MemberDashboard() {
       console.error('Error fetching current membership:', error)
       setCurrentMembership(null)
     }
-  }
+  }, [])
 
-  const fetchMemberStats = async () => {
+  const fetchMemberStats = useCallback(async () => {
     try {
       const resolvedMemberId = await resolveMemberId()
       if (!resolvedMemberId) {
@@ -168,13 +162,9 @@ export function MemberDashboard() {
         nextFeePayment: { amount: 0, dueDate: '', status: 'PENDING' },
       })
     }
-  }
+  }, [resolveMemberId])
 
-  const fetchDashboardData = async () => {
-    await Promise.all([fetchMemberStats(), fetchCurrentMembership(), fetchNotifications()])
-  }
-
-  const mapNotificationType = (notification: AppNotificationItem): MemberDashboardNotification['type'] => {
+  const mapNotificationType = useCallback((notification: AppNotificationItem): MemberDashboardNotification['type'] => {
     const text = `${notification.title} ${notification.message}`.toLowerCase()
 
     if (text.includes('renew') || text.includes('membership') || text.includes('fee') || text.includes('payment') || text.includes('due')) {
@@ -186,9 +176,9 @@ export function MemberDashboard() {
     }
 
     return 'info'
-  }
+  }, [])
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       const items = await notificationsService.list()
       setNotifications(
@@ -203,7 +193,17 @@ export function MemberDashboard() {
       setNotifications([])
       setNotificationsError('Unable to load notifications right now.')
     }
-  }
+  }, [mapNotificationType])
+
+  const fetchDashboardData = useCallback(async () => {
+    await Promise.all([fetchMemberStats(), fetchCurrentMembership(), fetchNotifications()])
+  }, [fetchCurrentMembership, fetchMemberStats, fetchNotifications])
+
+  useEffect(() => {
+    if (user?.email) {
+      void fetchDashboardData()
+    }
+  }, [fetchDashboardData, user?.email])
 
   const safeDate = (value?: string): string => {
     if (!value) return '-'
@@ -614,4 +614,3 @@ export function MemberDashboard() {
     </div>
   )
 }
-

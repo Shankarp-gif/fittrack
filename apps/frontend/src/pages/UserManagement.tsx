@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Users, Edit2, Trash2, Save, X, Building2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../services/api'
@@ -18,6 +19,7 @@ type Organization = ManagedOrganization
 
 export function UserManagement() {
   const { user: currentUser } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [users, setUsers] = useState<User[]>([])
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [loading, setLoading] = useState(true)
@@ -29,6 +31,7 @@ export function UserManagement() {
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<number | 'ALL'>('ALL')
   const [showCreateUserModal, setShowCreateUserModal] = useState(false)
   const [creatingUser, setCreatingUser] = useState(false)
+  const [handledDeepLink, setHandledDeepLink] = useState(false)
   const [createUserForm, setCreateUserForm] = useState<CreateManagedUserRequest>({
     fullName: '',
     email: '',
@@ -119,26 +122,14 @@ export function UserManagement() {
     }
   }, [currentUser?.role])
 
-  useEffect(() => {
-    if (currentUser?.role === 'SUPER_ADMIN') {
-      return
-    }
-
-    const matchedCurrentUser = users.find((item) => item.email?.toLowerCase() === currentUser?.email?.toLowerCase())
-    setCreateUserForm((prev) => ({
-      ...prev,
-      organizationId: matchedCurrentUser?.organizationId,
-    }))
-  }, [currentUser?.email, currentUser?.role, users])
-
-  const canChangeRole = (target: User) => {
+  const canChangeRole = useCallback((target: User) => {
     if (!currentUser || target.id === currentUser.id) return false
     if (currentUser.role === 'SUPER_ADMIN') return true
     if (currentUser.role === 'ADMIN') {
       return target.role !== 'SUPER_ADMIN' && target.role !== 'ADMIN'
     }
     return false
-  }
+  }, [currentUser])
 
   const canDeleteUser = (target: User) => {
     if (!currentUser || target.id === currentUser.id) return false
@@ -148,6 +139,35 @@ export function UserManagement() {
     if (currentUser.role === 'TRAINER') return target.role === 'USER'
     return false
   }
+
+  useEffect(() => {
+    if (handledDeepLink || users.length === 0) {
+      return
+    }
+
+    const deepUserId = Number(searchParams.get('userId'))
+    const deepMode = searchParams.get('mode')
+    if (!deepUserId) {
+      setHandledDeepLink(true)
+      return
+    }
+
+    const matchedUser = users.find((u) => u.id === deepUserId)
+    if (matchedUser) {
+      setActiveTab('users')
+      setSearchTerm(matchedUser.fullName)
+      if (deepMode === 'edit' && canChangeRole(matchedUser)) {
+        setEditingId(matchedUser.id)
+        setNewRole(matchedUser.role)
+      }
+    }
+
+    setHandledDeepLink(true)
+    const params = new URLSearchParams(searchParams)
+    params.delete('userId')
+    params.delete('mode')
+    setSearchParams(params, { replace: true })
+  }, [canChangeRole, handledDeepLink, users, searchParams, setSearchParams])
 
   const getAssignableRoles = (): GymRole[] => {
     if (!currentUser) return []
@@ -362,6 +382,17 @@ export function UserManagement() {
 
   const assignableRoles = getAssignableRoles()
   const canAnyRoleEdit = assignableRoles.length > 0
+  const isGymOperationsRole = currentUser?.role === 'GYM_MAINTENANCE_MANAGER'
+  const pageTitle = currentUser?.role === 'SUPER_ADMIN'
+    ? 'User & Organization Management'
+    : isGymOperationsRole
+      ? 'Operations Desk'
+      : 'User Management'
+  const pageSubtitle = currentUser?.role === 'SUPER_ADMIN'
+    ? 'Manage users and organizations across all gyms'
+    : isGymOperationsRole
+      ? 'Manage daily operations access for front-desk and support staff'
+      : 'Manage users based on your role permissions'
 
   return (
     <div className="user-management">
@@ -369,12 +400,10 @@ export function UserManagement() {
         <div>
           <h1 className="page-title">
             <Users size={32} style={{ marginRight: '12px' }} />
-            {currentUser?.role === 'SUPER_ADMIN' ? 'User & Organization Management' : 'User Management'}
+            {pageTitle}
           </h1>
           <p className="page-subtitle">
-            {currentUser?.role === 'SUPER_ADMIN'
-              ? 'Manage users and organizations across all gyms'
-              : 'Manage users based on your role permissions'}
+            {pageSubtitle}
           </p>
         </div>
         <div className="header-actions">

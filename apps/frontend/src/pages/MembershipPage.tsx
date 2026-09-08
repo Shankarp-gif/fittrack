@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Calendar, Users, Zap, Check, ArrowRight } from 'lucide-react'
 import { api } from '../services/api'
@@ -31,13 +31,10 @@ export function MembershipPage() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('')
   const [transactionId, setTransactionId] = useState('')
   const [processingEnrollment, setProcessingEnrollment] = useState(false)
+  const [progressNow] = useState(() => Date.now())
   const requiresTransactionId = selectedPaymentMethod === 'CARD' || selectedPaymentMethod === 'UPI'
   const isStaffRole = Boolean(user && user.role !== 'USER')
   const requestedMemberId = Number(searchParams.get('memberId') || '') || null
-
-  useEffect(() => {
-    setActiveTab((current) => (current === requestedTab ? current : requestedTab))
-  }, [requestedTab])
 
   const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
 
@@ -77,74 +74,7 @@ export function MembershipPage() {
     }
   }
 
-  useEffect(() => {
-    fetchMembershipData()
-  }, [activeTab, selectedMember?.id, isStaffRole])
-
-  useEffect(() => {
-    if (!isStaffRole) {
-      setSelectedMember(null)
-      setAssignableMembers([])
-      return
-    }
-
-    const fetchAssignableMembers = async () => {
-      setLoadingMembers(true)
-      try {
-        const response = await membersService.listMembers(0, 200, 'fullName', 'ASC')
-        const fetchedMembers = Array.isArray(response.content) ? response.content : []
-        setAssignableMembers(fetchedMembers)
-
-        if (requestedMemberId) {
-          const matchedMember = fetchedMembers.find((member) => member.id === requestedMemberId)
-          if (matchedMember) {
-            setSelectedMember(matchedMember)
-            return
-          }
-
-          const resolvedMember = await membersService.getMember(requestedMemberId)
-          setSelectedMember(resolvedMember)
-          setAssignableMembers((current) => current.some((member) => member.id === resolvedMember.id)
-            ? current
-            : [resolvedMember, ...current])
-        } else {
-          setSelectedMember(null)
-        }
-      } catch (error) {
-        console.error('Error fetching assignable members:', error)
-        showCenteredSuccessModal({
-          isOpen: true,
-          title: 'Members Unavailable',
-          message: 'Failed to load members for membership assignment.',
-          type: 'error',
-          duration: 4000,
-        })
-      } finally {
-        setLoadingMembers(false)
-      }
-    }
-
-    fetchAssignableMembers()
-  }, [isStaffRole, requestedMemberId])
-
-  useEffect(() => {
-    api.get('/api/payments/methods')
-      .then((response) => {
-        const methods = response.data?.data || response.data
-        const normalized = Array.isArray(methods) ? methods : []
-        setPaymentMethods(normalized)
-        if (normalized.length > 0) {
-          setSelectedPaymentMethod(normalized[0])
-        }
-      })
-      .catch(() => {
-        const fallbackMethods = ['CASH', 'CARD', 'UPI', 'BANK_TRANSFER', 'CHEQUE', 'ONLINE', 'AUTO_RENEWAL']
-        setPaymentMethods(fallbackMethods)
-        setSelectedPaymentMethod(fallbackMethods[0])
-      })
-  }, [])
-
-  const fetchMembershipData = async () => {
+  const fetchMembershipData = useCallback(async () => {
     setLoading(true)
     try {
       if (activeTab === 'plans') {
@@ -200,7 +130,72 @@ export function MembershipPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [activeTab, isStaffRole, selectedMember?.id])
+
+  useEffect(() => {
+    void fetchMembershipData()
+  }, [fetchMembershipData])
+
+  useEffect(() => {
+    if (!isStaffRole) {
+      return
+    }
+
+    const fetchAssignableMembers = async () => {
+      setLoadingMembers(true)
+      try {
+        const response = await membersService.listMembers(0, 200, 'fullName', 'ASC')
+        const fetchedMembers = Array.isArray(response.content) ? response.content : []
+        setAssignableMembers(fetchedMembers)
+
+        if (requestedMemberId) {
+          const matchedMember = fetchedMembers.find((member) => member.id === requestedMemberId)
+          if (matchedMember) {
+            setSelectedMember(matchedMember)
+            return
+          }
+
+          const resolvedMember = await membersService.getMember(requestedMemberId)
+          setSelectedMember(resolvedMember)
+          setAssignableMembers((current) => current.some((member) => member.id === resolvedMember.id)
+            ? current
+            : [resolvedMember, ...current])
+        } else {
+          setSelectedMember(null)
+        }
+      } catch (error) {
+        console.error('Error fetching assignable members:', error)
+        showCenteredSuccessModal({
+          isOpen: true,
+          title: 'Members Unavailable',
+          message: 'Failed to load members for membership assignment.',
+          type: 'error',
+          duration: 4000,
+        })
+      } finally {
+        setLoadingMembers(false)
+      }
+    }
+
+    void fetchAssignableMembers()
+  }, [isStaffRole, requestedMemberId])
+
+  useEffect(() => {
+    api.get('/api/payments/methods')
+      .then((response) => {
+        const methods = response.data?.data || response.data
+        const normalized = Array.isArray(methods) ? methods : []
+        setPaymentMethods(normalized)
+        if (normalized.length > 0) {
+          setSelectedPaymentMethod(normalized[0])
+        }
+      })
+      .catch(() => {
+        const fallbackMethods = ['CASH', 'CARD', 'UPI', 'BANK_TRANSFER', 'CHEQUE', 'ONLINE', 'AUTO_RENEWAL']
+        setPaymentMethods(fallbackMethods)
+        setSelectedPaymentMethod(fallbackMethods[0])
+      })
+  }, [])
 
   const handleMemberSelection = (nextMemberId: string) => {
     const parsedMemberId = Number(nextMemberId) || null
@@ -460,7 +455,7 @@ export function MembershipPage() {
   const getMembershipProgress = (membership: MembershipDetail): number => {
     const start = new Date(membership.startDate).getTime()
     const end = new Date(membership.endDate).getTime()
-    const now = Date.now()
+    const now = progressNow
     if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 0
     const elapsedPct = ((now - start) / (end - start)) * 100
     return Math.min(100, Math.max(0, Math.round(elapsedPct)))
