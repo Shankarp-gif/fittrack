@@ -48,6 +48,10 @@ export function UserManagement() {
     createdAt: String(item.createdAt || ''),
     organizationId: item.organizationId,
     organizationName: item.organizationName,
+    branchId: item.branchId,
+    branchName: item.branchName,
+    supervisorId: item.supervisorId,
+    supervisorName: item.supervisorName,
   })
 
   const normalizeOrganization = (item: Partial<Organization>): Organization => ({
@@ -244,7 +248,7 @@ export function UserManagement() {
       role: currentUser?.role === 'SUPER_ADMIN' ? 'ADMIN' : 'TRAINER',
       organizationId: currentUser?.role === 'SUPER_ADMIN'
         ? undefined
-        : users.find((item) => item.email?.toLowerCase() === currentUser?.email?.toLowerCase())?.organizationId,
+        : currentUser?.organizationId,
     })
     setShowCreateUserModal(true)
   }

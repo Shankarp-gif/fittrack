@@ -30,6 +30,12 @@ export interface UserMe {
   mobile?: string
   address?: string
   role: GymRole
+  organizationId?: number
+  organizationName?: string
+  branchId?: number
+  branchName?: string
+  supervisorId?: number
+  supervisorName?: string
   dateOfBirth?: string
   gender?: Gender
   heightCm?: number

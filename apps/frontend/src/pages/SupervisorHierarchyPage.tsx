@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../services/api'
 import { showCenteredSuccessModal } from '../components/common/CenteredSuccessModal'
 import type { GymRole } from '../types/auth'
@@ -13,39 +13,154 @@ interface User {
   createdAt: string
   organizationId?: number
   organizationName?: string
+  branchId?: number
+  branchName?: string
   supervisorId?: number
+  supervisorName?: string
 }
 
 interface HierarchyUser extends User {
-  supervisorName?: string
-  subordinates?: HierarchyUser[]
-  level?: number
+  subordinates: HierarchyUser[]
+  level: number
+}
+
+const ALLOWED_SUPERVISORS: Record<GymRole, GymRole[]> = {
+  SUPER_ADMIN: [],
+  ADMIN: ['SUPER_ADMIN'],
+  TRAINER: ['SUPER_ADMIN', 'ADMIN'],
+  GYM_MAINTENANCE_MANAGER: ['SUPER_ADMIN', 'ADMIN'],
+  USER: ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'GYM_MAINTENANCE_MANAGER'],
+}
+
+const ROLE_LABELS: Record<GymRole, string> = {
+  SUPER_ADMIN: 'Super Admin',
+  ADMIN: 'Admin',
+  TRAINER: 'Trainer',
+  GYM_MAINTENANCE_MANAGER: 'Gym Maintenance Manager',
+  USER: 'Member',
+}
+
+function buildHierarchy(userList: User[]): HierarchyUser[] {
+  const userMap = new Map<number, HierarchyUser>()
+
+  userList.forEach((user) => {
+    userMap.set(user.id, {
+      ...user,
+      subordinates: [],
+      level: 0,
+    })
+  })
+
+  userList.forEach((user) => {
+    if (!user.supervisorId) {
+      return
+    }
+
+    const node = userMap.get(user.id)
+    const supervisor = userMap.get(user.supervisorId)
+    if (!node || !supervisor) {
+      return
+    }
+
+    supervisor.subordinates.push(node)
+    node.supervisorName = node.supervisorName || supervisor.fullName
+  })
+
+  const assignLevels = (nodes: HierarchyUser[], level: number): HierarchyUser[] => {
+    return [...nodes]
+      .sort((left, right) => left.fullName.localeCompare(right.fullName))
+      .map((node) => ({
+        ...node,
+        level,
+        subordinates: assignLevels(node.subordinates, level + 1),
+      }))
+  }
+
+  const roots = Array.from(userMap.values()).filter((user) => !user.supervisorId || !userMap.has(user.supervisorId))
+  return assignLevels(roots, 0)
+}
+
+function filterHierarchy(nodes: HierarchyUser[], role: string): HierarchyUser[] {
+  if (!role) {
+    return nodes
+  }
+
+  return nodes
+    .map((node) => {
+      const matchingChildren = filterHierarchy(node.subordinates, role)
+      if (node.role === role || matchingChildren.length > 0) {
+        return {
+          ...node,
+          subordinates: matchingChildren,
+        }
+      }
+      return null
+    })
+    .filter((node): node is HierarchyUser => node !== null)
 }
 
 export function SupervisorHierarchyPage() {
-  const [users, setUsers] = useState<HierarchyUser[]>([])
+  const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
-  const [selectedUser, setSelectedUser] = useState<HierarchyUser | null>(null)
-  const [selectedSupervisor, setSelectedSupervisor] = useState<HierarchyUser | null>(null)
+  const [selectedUserId, setSelectedUserId] = useState<number | ''>('')
+  const [selectedSupervisorId, setSelectedSupervisorId] = useState<number | ''>('')
   const [hierarchyView, setHierarchyView] = useState<'tree' | 'list'>('tree')
   const [filterRole, setFilterRole] = useState<string>('')
 
   useEffect(() => {
-    fetchUsers()
+    void fetchUsers()
   }, [])
+
+  const selectedUser = useMemo(
+    () => users.find((user) => user.id === selectedUserId) ?? null,
+    [selectedUserId, users],
+  )
+
+  const selectedSupervisor = useMemo(
+    () => users.find((user) => user.id === selectedSupervisorId) ?? null,
+    [selectedSupervisorId, users],
+  )
+
+  const hierarchyRoots = useMemo(() => buildHierarchy(users), [users])
+
+  const hierarchyLevelByUserId = useMemo(() => {
+    const levels = new Map<number, number>()
+
+    const visit = (nodes: HierarchyUser[]) => {
+      nodes.forEach((node) => {
+        levels.set(node.id, node.level)
+        if (node.subordinates.length > 0) {
+          visit(node.subordinates)
+        }
+      })
+    }
+
+    visit(hierarchyRoots)
+    return levels
+  }, [hierarchyRoots])
+
+  const subordinateCountByUserId = useMemo(() => {
+    const counts = new Map<number, number>()
+    users.forEach((user) => {
+      if (user.supervisorId) {
+        counts.set(user.supervisorId, (counts.get(user.supervisorId) ?? 0) + 1)
+      }
+    })
+    return counts
+  }, [users])
 
   const fetchUsers = async () => {
     setLoading(true)
     try {
       const response = await api.get('/api/users/all')
-      const userData = Array.isArray(response.data) ? response.data : response.data.data || []
-      setUsers(buildHierarchy(userData))
-    } catch (error) {
+      const payload = Array.isArray(response.data) ? response.data : response.data?.data || []
+      setUsers(Array.isArray(payload) ? payload : [])
+    } catch (error: any) {
       console.error('Error fetching users:', error)
       showCenteredSuccessModal({
         isOpen: true,
         title: 'Error',
-        message: 'Failed to load users',
+        message: error?.response?.data?.message || 'Failed to load users',
         type: 'error',
         duration: 4000,
       })
@@ -54,42 +169,55 @@ export function SupervisorHierarchyPage() {
     }
   }
 
-  const buildHierarchy = (userList: User[]): HierarchyUser[] => {
-    const userMap = new Map<number, HierarchyUser>()
-    const roots: HierarchyUser[] = []
-
-    // First pass: create all users with subordinates array
-    userList.forEach((user) => {
-      userMap.set(user.id, {
-        ...user,
-        subordinates: [],
-        level: 0,
-      } as HierarchyUser)
-    })
-
-    // Second pass: build hierarchy and find roots
-    userList.forEach((user) => {
-      if (user.supervisorId) {
-        const supervisor = userMap.get(user.supervisorId)
-        if (supervisor) {
-          const subordinate = userMap.get(user.id)
-          if (subordinate) {
-            supervisor.subordinates?.push(subordinate)
-            subordinate.level = (supervisor.level || 0) + 1
-            subordinate.supervisorName = supervisor.fullName
-          }
-        }
-      } else {
-        const root = userMap.get(user.id)
-        if (root) {
-          root.level = 0
-          roots.push(root)
-        }
-      }
-    })
-
-    return roots.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''))
+  const getDescendantIds = (userId: number): Set<number> => {
+    const descendants = new Set<number>()
+    users
+      .filter((user) => user.supervisorId === userId)
+      .forEach((report) => {
+        descendants.add(report.id)
+        getDescendantIds(report.id).forEach((id) => descendants.add(id))
+      })
+    return descendants
   }
+
+  const validSupervisorOptions = useMemo(() => {
+    if (!selectedUser) {
+      return []
+    }
+
+    const blockedIds = getDescendantIds(selectedUser.id)
+    const allowedRoles = ALLOWED_SUPERVISORS[selectedUser.role] || []
+
+    return users.filter((candidate) => {
+      if (candidate.id === selectedUser.id || blockedIds.has(candidate.id) || !candidate.active) {
+        return false
+      }
+
+      if (!allowedRoles.includes(candidate.role)) {
+        return false
+      }
+
+      if (candidate.role === 'SUPER_ADMIN') {
+        return true
+      }
+
+      if (!selectedUser.organizationId || !candidate.organizationId) {
+        return false
+      }
+
+      return candidate.organizationId === selectedUser.organizationId
+    })
+  }, [selectedUser, users])
+
+  const filteredTreeUsers = useMemo(
+    () => filterHierarchy(hierarchyRoots, filterRole),
+    [filterRole, hierarchyRoots],
+  )
+
+  const filteredListUsers = useMemo(
+    () => (!filterRole ? users : users.filter((user) => user.role === filterRole)),
+    [filterRole, users],
+  )
 
   const assignSupervisor = async () => {
     if (!selectedUser || !selectedSupervisor) {
@@ -103,34 +231,23 @@ export function SupervisorHierarchyPage() {
       return
     }
 
-    if (selectedUser.id === selectedSupervisor.id) {
-      showCenteredSuccessModal({
-        isOpen: true,
-        title: 'Error',
-        message: 'A user cannot be their own supervisor',
-        type: 'error',
-        duration: 4000,
-      })
-      return
-    }
-
     try {
       await api.put(`/api/users/${selectedUser.id}/supervisor/${selectedSupervisor.id}`)
       showCenteredSuccessModal({
         isOpen: true,
         title: 'Success',
-        message: `${selectedUser.fullName} assigned to ${selectedSupervisor.fullName}`,
+        message: `${selectedUser.fullName} now reports to ${selectedSupervisor.fullName}`,
         type: 'success',
         duration: 3000,
       })
       await fetchUsers()
-      setSelectedUser(null)
-      setSelectedSupervisor(null)
-    } catch (error) {
+      setSelectedUserId('')
+      setSelectedSupervisorId('')
+    } catch (error: any) {
       showCenteredSuccessModal({
         isOpen: true,
         title: 'Error',
-        message: error instanceof Error ? error.message : 'Failed to assign supervisor',
+        message: error?.response?.data?.message || 'Failed to assign supervisor',
         type: 'error',
         duration: 4000,
       })
@@ -148,58 +265,57 @@ export function SupervisorHierarchyPage() {
         duration: 3000,
       })
       await fetchUsers()
-    } catch (error) {
+      if (selectedUserId === userId) {
+        setSelectedSupervisorId('')
+      }
+    } catch (error: any) {
       showCenteredSuccessModal({
         isOpen: true,
         title: 'Error',
-        message: error instanceof Error ? error.message : 'Failed to remove supervisor',
+        message: error?.response?.data?.message || 'Failed to remove supervisor',
         type: 'error',
         duration: 4000,
       })
     }
   }
 
-  const HierarchyTreeNode = ({ node, depth = 0 }: { node: HierarchyUser; depth?: number }) => {
-    return (
-      <div className="hierarchy-node" style={{ marginLeft: `${depth * 24}px` }}>
-        <div className="node-header">
-          <span className="node-info">
-            <strong>{node.fullName}</strong>
-            <span className="node-role">{node.role}</span>
-            {node.level !== undefined && <span className="node-level">Level {node.level}</span>}
-          </span>
-          <button
-            className="edit-btn"
-            onClick={() => setSelectedUser(node)}
-            title="Edit supervisor"
-          >
-            ✏️
-          </button>
-        </div>
-        {node.subordinates && node.subordinates.length > 0 && (
-          <div className="node-children">
-            {node.subordinates.map((child) => (
-              <HierarchyTreeNode key={child.id} node={child} depth={(depth || 0) + 1} />
-            ))}
-          </div>
-        )}
+  const HierarchyTreeNode = ({ node, depth = 0 }: { node: HierarchyUser; depth?: number }) => (
+    <div className="hierarchy-node" style={{ marginLeft: `${depth * 24}px` }}>
+      <div className="node-header">
+        <span className="node-info">
+          <strong>{node.fullName}</strong>
+          <span className="node-role">{ROLE_LABELS[node.role]}</span>
+          <span className="node-level">Level {node.level}</span>
+          <span className="node-level">{node.organizationName || 'Unassigned'}</span>
+        </span>
+        <button
+          className="edit-btn"
+          onClick={() => {
+            setSelectedUserId(node.id)
+            setSelectedSupervisorId(node.supervisorId ?? '')
+          }}
+          title="Edit supervisor"
+        >
+          ✏️
+        </button>
       </div>
-    )
-  }
-
-  const filteredUsers = users.filter((u) => {
-    if (!filterRole) return true
-    return u.role === filterRole || u.subordinates?.some((s) => s.role === filterRole)
-  })
+      {node.subordinates.length > 0 && (
+        <div className="node-children">
+          {node.subordinates.map((child) => (
+            <HierarchyTreeNode key={child.id} node={child} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
 
   return (
     <div className="supervisor-hierarchy-container">
       <section className="panel">
         <h1>🏢 Supervisor Hierarchy Management</h1>
-        <p className="muted">Organize your gym staff into a hierarchy with supervisors and their teams.</p>
+        <p className="muted">Build a clean reporting structure inside each organization.</p>
       </section>
 
-      {/* Controls */}
       <section className="panel controls-panel">
         <div className="controls-row">
           <div className="control-group">
@@ -225,21 +341,20 @@ export function SupervisorHierarchyPage() {
             >
               <option value="">All Roles</option>
               <option value="SUPER_ADMIN">Super Admin</option>
-              <option value="ADMIN">Admin/Gym Owner</option>
+              <option value="ADMIN">Admin</option>
               <option value="TRAINER">Trainer</option>
               <option value="GYM_MAINTENANCE_MANAGER">Gym Maintenance Manager</option>
               <option value="USER">Member</option>
             </select>
           </div>
 
-          <button onClick={fetchUsers} className="primary-btn" disabled={loading}>
+          <button onClick={() => void fetchUsers()} className="primary-btn" disabled={loading}>
             {loading ? 'Loading...' : '🔄 Refresh'}
           </button>
         </div>
       </section>
 
       <div className="hierarchy-layout">
-        {/* Assignment Panel */}
         <section className="panel assignment-panel">
           <h2>📋 Assign Supervisor</h2>
 
@@ -247,17 +362,25 @@ export function SupervisorHierarchyPage() {
             <div className="form-group">
               <label>Select User:</label>
               <select
+                value={selectedUserId}
                 onChange={(e) => {
-                  const userId = parseInt(e.target.value)
-                  const selected = users.find((u) => u.id === userId)
-                  setSelectedUser(selected || null)
+                  const userId = Number(e.target.value)
+                  if (Number.isNaN(userId) || userId <= 0) {
+                    setSelectedUserId('')
+                    setSelectedSupervisorId('')
+                    return
+                  }
+
+                  const nextUser = users.find((user) => user.id === userId)
+                  setSelectedUserId(userId)
+                  setSelectedSupervisorId(nextUser?.supervisorId ?? '')
                 }}
                 className="form-control"
               >
                 <option value="">-- Choose a user --</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.fullName} ({u.role})
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.fullName} ({ROLE_LABELS[user.role]})
                   </option>
                 ))}
               </select>
@@ -265,6 +388,8 @@ export function SupervisorHierarchyPage() {
                 <div className="selected-info">
                   <strong>{selectedUser.fullName}</strong>
                   <p>Current Supervisor: {selectedUser.supervisorName || 'None'}</p>
+                  <p>Organization: {selectedUser.organizationName || 'Unassigned'}</p>
+                  <p>Branch: {selectedUser.branchName || 'Unassigned'}</p>
                 </div>
               )}
             </div>
@@ -272,75 +397,84 @@ export function SupervisorHierarchyPage() {
             <div className="form-group">
               <label>Assign Supervisor:</label>
               <select
+                value={selectedSupervisorId}
                 onChange={(e) => {
-                  const supervisorId = parseInt(e.target.value)
-                  const selected = users.find((u) => u.id === supervisorId)
-                  setSelectedSupervisor(selected || null)
+                  const supervisorId = Number(e.target.value)
+                  setSelectedSupervisorId(Number.isNaN(supervisorId) || supervisorId <= 0 ? '' : supervisorId)
                 }}
                 className="form-control"
+                disabled={!selectedUser}
               >
                 <option value="">-- Choose a supervisor --</option>
-                {users
-                  .filter((u) => u.id !== selectedUser?.id)
-                  .map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.fullName} ({u.role})
-                    </option>
-                  ))}
+                {validSupervisorOptions.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.fullName} ({ROLE_LABELS[user.role]})
+                  </option>
+                ))}
               </select>
               {selectedSupervisor && (
                 <div className="selected-info">
                   <strong>{selectedSupervisor.fullName}</strong>
-                  <p>Role: {selectedSupervisor.role}</p>
+                  <p>Role: {ROLE_LABELS[selectedSupervisor.role]}</p>
+                  <p>Organization: {selectedSupervisor.organizationName || 'Global'}</p>
                 </div>
               )}
             </div>
 
-            <button onClick={assignSupervisor} className="primary-btn" disabled={!selectedUser || !selectedSupervisor}>
+            <button onClick={() => void assignSupervisor()} className="primary-btn" disabled={!selectedUser || !selectedSupervisor}>
               ✅ Assign Supervisor
             </button>
 
-            {selectedUser && selectedUser.supervisorId && (
-              <button onClick={() => removeSupervisor(selectedUser.id)} className="danger-btn">
+            {selectedUser?.supervisorId ? (
+              <button onClick={() => void removeSupervisor(selectedUser.id)} className="danger-btn">
                 ❌ Remove Supervisor
               </button>
-            )}
+            ) : null}
+
+            {selectedUser && validSupervisorOptions.length === 0 ? (
+              <p className="muted">No valid supervisors are available for the selected user based on role and organization.</p>
+            ) : null}
           </div>
         </section>
 
-        {/* Hierarchy Display */}
         <section className="panel hierarchy-panel">
           <h2>{hierarchyView === 'tree' ? '🌳 Hierarchy Tree' : '📊 Hierarchy List'}</h2>
 
           {loading ? (
             <p className="muted">Loading hierarchy...</p>
-          ) : filteredUsers.length === 0 ? (
-            <p className="muted">No users found with the selected filters.</p>
           ) : hierarchyView === 'tree' ? (
-            <div className="hierarchy-tree">
-              {filteredUsers.map((root) => (
-                <HierarchyTreeNode key={root.id} node={root} />
-              ))}
-            </div>
+            filteredTreeUsers.length === 0 ? (
+              <p className="muted">No users found with the selected filters.</p>
+            ) : (
+              <div className="hierarchy-tree">
+                {filteredTreeUsers.map((root) => (
+                  <HierarchyTreeNode key={root.id} node={root} />
+                ))}
+              </div>
+            )
+          ) : filteredListUsers.length === 0 ? (
+            <p className="muted">No users found with the selected filters.</p>
           ) : (
             <table className="hierarchy-table">
               <thead>
                 <tr>
                   <th>Name</th>
                   <th>Role</th>
+                  <th>Organization</th>
                   <th>Level</th>
                   <th>Supervisor</th>
                   <th>Subordinates</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((u) => (
-                  <tr key={u.id} className="hierarchy-row">
-                    <td>{u.fullName}</td>
-                    <td>{u.role}</td>
-                    <td>{u.level ?? 0}</td>
-                    <td>{u.supervisorName || 'Root'}</td>
-                    <td>{u.subordinates?.length || 0}</td>
+                {filteredListUsers.map((user) => (
+                  <tr key={user.id} className="hierarchy-row">
+                    <td>{user.fullName}</td>
+                    <td>{ROLE_LABELS[user.role]}</td>
+                    <td>{user.organizationName || 'Unassigned'}</td>
+                    <td>{hierarchyLevelByUserId.get(user.id) ?? 0}</td>
+                    <td>{user.supervisorName || 'Root'}</td>
+                    <td>{subordinateCountByUserId.get(user.id) ?? 0}</td>
                   </tr>
                 ))}
               </tbody>
@@ -349,17 +483,15 @@ export function SupervisorHierarchyPage() {
         </section>
       </div>
 
-      {/* Info Panel */}
       <section className="panel info-panel">
-        <h3>ℹ️ Hierarchy Levels</h3>
+        <h3>ℹ️ Hierarchy Rules</h3>
         <ul>
-          <li><strong>Level 0:</strong> Root users (no supervisor) - Typically Super Admin or Gym Owner</li>
-          <li><strong>Level 1:</strong> Direct reports to Level 0 - Typically Admins</li>
-          <li><strong>Level 2+:</strong> Cascade down - Trainers, Gym Maintenance Managers, etc.</li>
+          <li><strong>Super Admin</strong> can oversee admins across organizations.</li>
+          <li><strong>Admins</strong> can supervise trainers and gym maintenance managers in their own organization.</li>
+          <li><strong>Members</strong> can report to a trainer, admin, gym maintenance manager, or super admin.</li>
         </ul>
-        <p>Use this page to establish clear reporting structures for your gym organization.</p>
+        <p>Supervisor choices are filtered automatically to prevent cross-organization mismatches and reporting cycles.</p>
       </section>
     </div>
   )
 }
-

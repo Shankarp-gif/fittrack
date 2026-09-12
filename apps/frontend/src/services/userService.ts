@@ -17,6 +17,10 @@ export interface ManageableUser {
   createdAt: string
   organizationId?: number
   organizationName?: string
+  branchId?: number
+  branchName?: string
+  supervisorId?: number
+  supervisorName?: string
 }
 
 export interface ManagedOrganization {

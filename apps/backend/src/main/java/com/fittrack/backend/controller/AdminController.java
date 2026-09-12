@@ -2,6 +2,7 @@ package com.fittrack.backend.controller;
 
 import com.fittrack.backend.dto.common.ApiResponse;
 import com.fittrack.backend.dto.AdminDashboardDTO;
+import com.fittrack.backend.dto.HierarchyAuditDTO;
 import com.fittrack.backend.service.AdminService;
 import com.fittrack.backend.util.AuthenticationContextHelper;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,15 @@ public class AdminController {
         Long orgId = authContextHelper.getOrganizationId(authentication);
         List<AdminDashboardDTO.RecentActivityDTO> activities = adminService.getRecentActivities(orgId);
         return ResponseEntity.ok(ApiResponse.success("Recent activities fetched successfully", activities));
+    }
+
+    @GetMapping("/hierarchy-audit")
+    public ResponseEntity<ApiResponse<HierarchyAuditDTO.SnapshotDTO>> getHierarchyAudit(Authentication authentication) {
+        String role = authContextHelper.getUserRole(authentication);
+        Long orgId = "SUPER_ADMIN".equalsIgnoreCase(role) ? null : authContextHelper.getOrganizationId(authentication);
+
+        HierarchyAuditDTO.SnapshotDTO snapshot = adminService.getHierarchyAudit(role, orgId);
+        return ResponseEntity.ok(ApiResponse.success("Hierarchy audit fetched successfully", snapshot));
     }
 }
 

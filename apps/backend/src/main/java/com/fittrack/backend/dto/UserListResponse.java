@@ -12,7 +12,11 @@ public record UserListResponse(
     boolean active,
     Instant createdAt,
     Long organizationId,
-    String organizationName
+    String organizationName,
+    Long branchId,
+    String branchName,
+    Long supervisorId,
+    String supervisorName
 ) {
 }
 

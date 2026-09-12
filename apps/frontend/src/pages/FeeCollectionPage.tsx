@@ -8,6 +8,8 @@ import '../styles/FeeCollectionPage.css'
 
 export function FeeCollectionPage() {
   const [searchParams] = useSearchParams()
+  const requestedMemberId = Number(searchParams.get('memberId') || '')
+  const requestedTab = searchParams.get('tab')
   const [feeCollection, setFeeCollection] = useState<FeeCollection | null>(null)
   const [feeRecords, setFeeRecords] = useState<FeeRecord[]>([])
   const [transactions, setTransactions] = useState<PaymentTransaction[]>([])
@@ -20,8 +22,6 @@ export function FeeCollectionPage() {
   const [paymentAmount, setPaymentAmount] = useState('')
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'CASH' | 'UPI' | 'CARD' | 'CHEQUE'>('CASH')
   const [transactionRef, setTransactionRef] = useState('')
-  const requestedMemberId = Number(searchParams.get('memberId') || '')
-  const requestedTab = searchParams.get('tab')
 
   const unwrapData = <T,>(payload: any): T => {
     return (payload?.data ?? payload) as T

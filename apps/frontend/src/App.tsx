@@ -35,6 +35,7 @@ import { MemberNewPage } from './pages/MemberNewPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { PlansPage } from './pages/PlansPage'
 import { SupervisorHierarchyPage } from './pages/SupervisorHierarchyPage'
+import { HierarchyAuditPage } from './pages/HierarchyAuditPage'
 import { OrganizationManagement } from './pages/OrganizationManagement'
 import { SuperAdminOrganizationHierarchy } from './pages/SuperAdminOrganizationHierarchy'
 import { AdminRoleManagement } from './pages/AdminRoleManagement'
@@ -280,6 +281,14 @@ export default function App() {
               element={
                 <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN']}>
                   <SupervisorHierarchyPage />
+                </RoleBasedRoute>
+              }
+            />
+            <Route
+              path="/hierarchy-audit"
+              element={
+                <RoleBasedRoute requiredRoles={['SUPER_ADMIN', 'ADMIN']}>
+                  <HierarchyAuditPage />
                 </RoleBasedRoute>
               }
             />

@@ -26,6 +26,51 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     @Query("SELECT m FROM Member m WHERE m.organization.id = :orgId AND (m.fullName ILIKE :search OR m.email ILIKE :search OR m.mobile ILIKE :search)")
     Page<Member> searchMembers(@Param("orgId") Long organizationId, @Param("search") String search, Pageable pageable);
 
+    @Query("""
+        SELECT m FROM Member m
+        WHERE (:organizationId IS NULL OR m.organization.id = :organizationId)
+          AND (:branchId IS NULL OR m.branch.id = :branchId)
+          AND (LOWER(m.fullName) LIKE LOWER(:search)
+               OR LOWER(COALESCE(m.email, '')) LIKE LOWER(:search)
+               OR LOWER(COALESCE(m.mobile, '')) LIKE LOWER(:search))
+    """)
+    Page<Member> searchMembersScoped(
+        @Param("organizationId") Long organizationId,
+        @Param("branchId") Long branchId,
+        @Param("search") String search,
+        Pageable pageable
+    );
+
+    @Query("""
+        SELECT m FROM Member m
+        WHERE (:organizationId IS NULL OR m.organization.id = :organizationId)
+          AND (:branchId IS NULL OR m.branch.id = :branchId)
+    """)
+    Page<Member> findScopedMembers(
+        @Param("organizationId") Long organizationId,
+        @Param("branchId") Long branchId,
+        Pageable pageable
+    );
+
+    @Query("""
+        SELECT COUNT(m) FROM Member m
+        WHERE (:organizationId IS NULL OR m.organization.id = :organizationId)
+          AND (:branchId IS NULL OR m.branch.id = :branchId)
+    """)
+    long countScopedMembers(@Param("organizationId") Long organizationId, @Param("branchId") Long branchId);
+
+    @Query("""
+        SELECT COUNT(m) FROM Member m
+        WHERE (:organizationId IS NULL OR m.organization.id = :organizationId)
+          AND (:branchId IS NULL OR m.branch.id = :branchId)
+          AND m.active = :active
+    """)
+    long countScopedMembersByActive(
+        @Param("organizationId") Long organizationId,
+        @Param("branchId") Long branchId,
+        @Param("active") boolean active
+    );
+
     List<Member> findByOrganizationIdAndStatus(Long organizationId, MemberStatus status);
 
     long countByOrganizationId(Long organizationId);

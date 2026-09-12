@@ -59,6 +59,7 @@ export const PAGE_ACCESS: Record<string, GymRole[]> = {
   '/settings': ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'GYM_MAINTENANCE_MANAGER', 'USER'],
   '/plans': ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'USER'],
    '/hierarchy': ['SUPER_ADMIN', 'ADMIN'],
+   '/hierarchy-audit': ['SUPER_ADMIN', 'ADMIN'],
    '/organizations': ['SUPER_ADMIN'],
    '/organizations-hierarchy': ['SUPER_ADMIN'],
    '/role-management': ['SUPER_ADMIN', 'ADMIN'],
@@ -141,6 +142,7 @@ export function getNavItemsForRole(role: GymRole) {
       { icon: '👤', label: 'User Management', path: '/user-management' },
       { icon: '🛡️', label: 'Role Management', path: '/role-management' },
       { icon: '🏢', label: 'Hierarchy', path: '/hierarchy' },
+      { icon: '🩺', label: 'Hierarchy Audit', path: '/hierarchy-audit' },
       { icon: '📊', label: 'Reports', path: '/reports' },
     ],
     ADMIN: [
@@ -153,6 +155,7 @@ export function getNavItemsForRole(role: GymRole) {
       { icon: '👤', label: 'User Management', path: '/user-management' },
       { icon: '🛡️', label: 'Role Management', path: '/role-management' },
       { icon: '🏢', label: 'Hierarchy', path: '/hierarchy' },
+      { icon: '🩺', label: 'Hierarchy Audit', path: '/hierarchy-audit' },
       { icon: '📊', label: 'Reports', path: '/reports' },
     ],
     TRAINER: [

@@ -10,6 +10,7 @@ import com.fittrack.backend.dto.OrganizationDTO;
 import com.fittrack.backend.dto.UpdateProfileRequest;
 import com.fittrack.backend.dto.UserListResponse;
 import com.fittrack.backend.dto.UserMeResponse;
+import com.fittrack.backend.entity.Branch;
 import com.fittrack.backend.entity.Organization;
 import com.fittrack.backend.entity.Role;
 import com.fittrack.backend.entity.User;
@@ -18,6 +19,7 @@ import com.fittrack.backend.entity.enums.RoleName;
 import com.fittrack.backend.exception.AppException;
 import com.fittrack.backend.mapper.OrganizationMapper;
 import com.fittrack.backend.mapper.UserMapper;
+import com.fittrack.backend.repository.BranchRepository;
 import com.fittrack.backend.repository.OrganizationRepository;
 import com.fittrack.backend.repository.RoleRepository;
 import com.fittrack.backend.repository.UserProfileRepository;
@@ -40,6 +42,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final UserProfileRepository profileRepository;
     private final RoleRepository roleRepository;
+    private final BranchRepository branchRepository;
     private final OrganizationRepository organizationRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmployeeIdGenerator employeeIdGenerator;
@@ -48,6 +51,7 @@ public class UserServiceImpl implements UserService {
             UserRepository userRepository,
             UserProfileRepository profileRepository,
             RoleRepository roleRepository,
+            BranchRepository branchRepository,
             OrganizationRepository organizationRepository,
             PasswordEncoder passwordEncoder,
             EmployeeIdGenerator employeeIdGenerator
@@ -55,6 +59,7 @@ public class UserServiceImpl implements UserService {
         this.userRepository = userRepository;
         this.profileRepository = profileRepository;
         this.roleRepository = roleRepository;
+        this.branchRepository = branchRepository;
         this.organizationRepository = organizationRepository;
         this.passwordEncoder = passwordEncoder;
         this.employeeIdGenerator = employeeIdGenerator;
@@ -214,28 +219,33 @@ public class UserServiceImpl implements UserService {
             throw new AppException(HttpStatus.CONFLICT, "User with this email already exists");
         }
 
+        if (request.organizationId() == null) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Organization is required for admin creation");
+        }
+
         // Get Admin role
         Role adminRole = roleRepository.findByName(RoleName.ADMIN)
             .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Admin role not found"));
 
-        // Get Organization if provided
-        Organization organization = null;
-        if (request.organizationId() != null) {
-            organization = organizationRepository.findById(request.organizationId())
-                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Organization not found"));
-        }
+        Organization organization = organizationRepository.findById(request.organizationId())
+            .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Organization not found"));
 
         // Create new admin user
         User admin = new User();
-        admin.setFullName(request.fullName());
-        admin.setEmail(request.email());
+        admin.setFullName(request.fullName().trim());
+        admin.setEmail(request.email().trim().toLowerCase());
         admin.setPasswordHash(passwordEncoder.encode(request.password()));
         admin.setRole(adminRole);
+        admin.setActive(true);
         syncEmployeeIdNumber(admin, RoleName.ADMIN);
-        admin.setOrganization(organization);
+        assignOrganizationAndDefaultBranch(admin, organization);
         admin = userRepository.save(admin);
+        ensureOrganizationOwner(organization, admin);
 
-        UserProfile profile = profileRepository.findByUserId(admin.getId()).orElse(null);
+        UserProfile profile = new UserProfile();
+        profile.setUser(admin);
+        profile = profileRepository.save(profile);
+
         return UserMapper.toMeResponse(admin, profile);
     }
 
@@ -252,8 +262,9 @@ public class UserServiceImpl implements UserService {
         Organization organization = organizationRepository.findById(request.organizationId())
             .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Organization not found"));
 
-        user.setOrganization(organization);
+        assignOrganizationAndDefaultBranch(user, organization);
         userRepository.save(user);
+        ensureOrganizationOwner(organization, user);
 
         UserProfile profile = profileRepository.findByUserId(user.getId()).orElse(null);
         return UserMapper.toMeResponse(user, profile);
@@ -262,12 +273,12 @@ public class UserServiceImpl implements UserService {
     @Override
     public OrganizationDTO createOrganization(CreateOrganizationRequest request) {
         // Check if organization already exists
-        if (organizationRepository.findByName(request.name()).isPresent()) {
+        if (organizationRepository.findByName(request.name().trim()).isPresent()) {
             throw new AppException(HttpStatus.CONFLICT, "Organization with this name already exists");
         }
 
         Organization organization = new Organization();
-        organization.setName(request.name());
+        organization.setName(request.name().trim());
         organization.setEmail(request.email());
         organization.setPhone(request.phone());
         organization.setAddress(request.address());
@@ -279,6 +290,7 @@ public class UserServiceImpl implements UserService {
         organization.setActive(true);
 
         organization = organizationRepository.save(organization);
+        ensureDefaultBranch(organization);
         return OrganizationMapper.toDTO(organization);
     }
 
@@ -302,7 +314,7 @@ public class UserServiceImpl implements UserService {
         Organization organization = organizationRepository.findById(organizationId)
             .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Organization not found"));
 
-        organization.setName(request.name());
+        organization.setName(request.name().trim());
         organization.setEmail(request.email());
         organization.setPhone(request.phone());
         organization.setAddress(request.address());
@@ -327,8 +339,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserListResponse> getUsersByOrganization(Long organizationId) {
-        Organization organization = organizationRepository.findById(organizationId)
-            .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Organization not found"));
+        if (!organizationRepository.existsById(organizationId)) {
+            throw new AppException(HttpStatus.NOT_FOUND, "Organization not found");
+        }
 
         List<User> users = userRepository.findByOrganizationId(organizationId);
         return users.stream()
@@ -346,7 +359,11 @@ public class UserServiceImpl implements UserService {
             user.isActive(),
             user.getCreatedAt(),
             user.getOrganization() != null ? user.getOrganization().getId() : null,
-            user.getOrganization() != null ? user.getOrganization().getName() : null
+            user.getOrganization() != null ? user.getOrganization().getName() : null,
+            user.getBranch() != null ? user.getBranch().getId() : null,
+            user.getBranch() != null ? user.getBranch().getName() : null,
+            user.getSupervisor() != null ? user.getSupervisor().getId() : null,
+            user.getSupervisor() != null ? user.getSupervisor().getFullName() : null
         );
     }
 
@@ -452,8 +469,11 @@ public class UserServiceImpl implements UserService {
         User requester = findUser(requesterEmail);
         User target = userRepository.findById(userId)
             .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "User not found"));
-        User supervisor = userRepository.findById(supervisorId)
-            .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Supervisor not found"));
+        User supervisor = null;
+        if (supervisorId != null && supervisorId > 0) {
+            supervisor = userRepository.findById(supervisorId)
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Supervisor not found"));
+        }
 
         // Validate permission
         validateSupervisorAssignmentPermission(requester, target, supervisor);
@@ -469,22 +489,18 @@ public class UserServiceImpl implements UserService {
     private void validateSupervisorAssignmentPermission(User requester, User target, User supervisor) {
         // Only SUPER_ADMIN and ADMIN can assign supervisors
         RoleName requesterRole = requester.getRole().getName();
+        RoleName targetRole = target.getRole().getName();
 
         if (requesterRole != RoleName.SUPER_ADMIN && requesterRole != RoleName.ADMIN) {
             throw new AppException(HttpStatus.FORBIDDEN, "Only admins can assign supervisors");
         }
 
-        // Supervisor must have one of the allowed roles
-        RoleName supervisorRole = supervisor.getRole().getName();
-        Set<RoleName> allowedSupervisorRoles = Set.of(
-            RoleName.SUPER_ADMIN,
-            RoleName.ADMIN,
-            RoleName.GYM_MAINTENANCE_MANAGER
-        );
+        if (!target.isActive()) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Cannot assign hierarchy for an inactive user");
+        }
 
-        if (!allowedSupervisorRoles.contains(supervisorRole)) {
-            throw new AppException(HttpStatus.BAD_REQUEST,
-                "Supervisor must have SUPER_ADMIN, ADMIN, or GYM_MAINTENANCE_MANAGER role");
+        if (targetRole == RoleName.SUPER_ADMIN) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Super admin users cannot have a supervisor");
         }
 
         // Admin can only assign supervisors within their organization
@@ -493,11 +509,29 @@ public class UserServiceImpl implements UserService {
                 || !requester.getOrganization().getId().equals(target.getOrganization().getId())) {
                 throw new AppException(HttpStatus.FORBIDDEN, "You can only manage users in your organization");
             }
-            if (supervisor.getOrganization() == null
-                || !requester.getOrganization().getId().equals(supervisor.getOrganization().getId())) {
+            if (supervisor != null && (supervisor.getOrganization() == null
+                || !requester.getOrganization().getId().equals(supervisor.getOrganization().getId()))) {
                 throw new AppException(HttpStatus.FORBIDDEN, "Supervisor must be from your organization");
             }
         }
+
+        if (supervisor == null) {
+            return;
+        }
+
+        if (!supervisor.isActive()) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Inactive users cannot be assigned as supervisors");
+        }
+
+        if (target.getId().equals(supervisor.getId())) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "A user cannot supervise themselves");
+        }
+
+        if (createsSupervisorCycle(target, supervisor)) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "This supervisor assignment would create a cycle in the hierarchy");
+        }
+
+        validateHierarchyCompatibility(target, supervisor);
     }
 
     @Override
@@ -518,33 +552,28 @@ public class UserServiceImpl implements UserService {
         Role role = roleRepository.findByName(request.role())
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Role not found"));
 
-        // Get organization
-        Organization organization = null;
-        if (request.organizationId() != null) {
-            organization = organizationRepository.findById(request.organizationId())
-                    .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Organization not found"));
-            
-            // ADMIN can only create users in their organization
-            if (requester.getRole().getName() == RoleName.ADMIN) {
-                if (requester.getOrganization() == null || 
-                    !requester.getOrganization().getId().equals(organization.getId())) {
-                    throw new AppException(HttpStatus.FORBIDDEN, "You can only create users in your organization");
-                }
-            }
+        if (request.role() == RoleName.SUPER_ADMIN) {
+            throw new AppException(HttpStatus.FORBIDDEN, "Use the dedicated super admin flow to manage super admin users");
         }
+
+        if (requester.getRole().getName() == RoleName.ADMIN && request.role() == RoleName.ADMIN) {
+            throw new AppException(HttpStatus.FORBIDDEN, "Admins cannot create other admins");
+        }
+
+        Organization organization = resolveOrganizationForManagedUser(requester, request.organizationId(), request.role());
 
         // Get default password based on role
         String defaultPassword = getDefaultPassword(request.role());
 
         // Create user
         User user = new User();
-        user.setFullName(request.fullName());
-        user.setEmail(request.email());
+        user.setFullName(request.fullName().trim());
+        user.setEmail(request.email().trim().toLowerCase());
         user.setPasswordHash(passwordEncoder.encode(defaultPassword));
         user.setRole(role);
         syncEmployeeIdNumber(user, request.role());
         user.setActive(true);
-        user.setOrganization(organization);
+        assignOrganizationAndDefaultBranch(user, organization);
 
         user = userRepository.save(user);
 
@@ -577,5 +606,99 @@ public class UserServiceImpl implements UserService {
         if (user.getEmployeeIdNumber() == null || !user.getEmployeeIdNumber().startsWith(expectedPrefix)) {
             user.setEmployeeIdNumber(employeeIdGenerator.generateEmployeeId(roleName));
         }
+    }
+
+    private Organization resolveOrganizationForManagedUser(User requester, Long requestedOrganizationId, RoleName targetRole) {
+        if (targetRole == RoleName.SUPER_ADMIN) {
+            return null;
+        }
+
+        RoleName requesterRole = requester.getRole().getName();
+        if (requesterRole == RoleName.ADMIN) {
+            Organization requesterOrganization = requester.getOrganization();
+            if (requesterOrganization == null) {
+                throw new AppException(HttpStatus.BAD_REQUEST, "Your account is not assigned to an organization");
+            }
+            if (requestedOrganizationId != null && !requesterOrganization.getId().equals(requestedOrganizationId)) {
+                throw new AppException(HttpStatus.FORBIDDEN, "You can only create users in your organization");
+            }
+            return requesterOrganization;
+        }
+
+        if (requestedOrganizationId == null) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Organization is required for this user role");
+        }
+
+        return organizationRepository.findById(requestedOrganizationId)
+            .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Organization not found"));
+    }
+
+    private void assignOrganizationAndDefaultBranch(User user, Organization organization) {
+        user.setOrganization(organization);
+        user.setBranch(organization != null ? ensureDefaultBranch(organization) : null);
+    }
+
+    private Branch ensureDefaultBranch(Organization organization) {
+        return branchRepository.findByOrganizationId(organization.getId())
+            .stream()
+            .findFirst()
+            .orElseGet(() -> createDefaultBranch(organization));
+    }
+
+    private Branch createDefaultBranch(Organization organization) {
+        Branch branch = new Branch();
+        branch.setOrganization(organization);
+        branch.setName("Main Branch");
+        branch.setAddress(organization.getAddress());
+        branch.setCity(organization.getCity());
+        branch.setPhone(organization.getPhone());
+        branch.setEmail(organization.getEmail());
+        branch.setActive(true);
+        return branchRepository.save(branch);
+    }
+
+    private void ensureOrganizationOwner(Organization organization, User admin) {
+        if (organization.getOwnerUserId() == null && admin.getRole().getName() == RoleName.ADMIN) {
+            organization.setOwnerUserId(admin.getId());
+            organizationRepository.save(organization);
+        }
+    }
+
+    private void validateHierarchyCompatibility(User target, User supervisor) {
+        RoleName targetRole = target.getRole().getName();
+        RoleName supervisorRole = supervisor.getRole().getName();
+
+        Set<RoleName> allowedSupervisorRoles = switch (targetRole) {
+            case ADMIN -> Set.of(RoleName.SUPER_ADMIN);
+            case TRAINER, GYM_MAINTENANCE_MANAGER -> Set.of(RoleName.SUPER_ADMIN, RoleName.ADMIN);
+            case USER -> Set.of(RoleName.SUPER_ADMIN, RoleName.ADMIN, RoleName.TRAINER, RoleName.GYM_MAINTENANCE_MANAGER);
+            case SUPER_ADMIN -> Set.of();
+        };
+
+        if (!allowedSupervisorRoles.contains(supervisorRole)) {
+            throw new AppException(HttpStatus.BAD_REQUEST,
+                "Invalid hierarchy: " + supervisorRole + " cannot supervise " + targetRole);
+        }
+
+        if (supervisorRole != RoleName.SUPER_ADMIN) {
+            if (target.getOrganization() == null) {
+                throw new AppException(HttpStatus.BAD_REQUEST, "Target user must belong to an organization before assigning a supervisor");
+            }
+            if (supervisor.getOrganization() == null
+                || !target.getOrganization().getId().equals(supervisor.getOrganization().getId())) {
+                throw new AppException(HttpStatus.BAD_REQUEST, "Supervisor must belong to the same organization as the user");
+            }
+        }
+    }
+
+    private boolean createsSupervisorCycle(User target, User supervisor) {
+        User current = supervisor;
+        while (current != null) {
+            if (current.getId().equals(target.getId())) {
+                return true;
+            }
+            current = current.getSupervisor();
+        }
+        return false;
     }
 }

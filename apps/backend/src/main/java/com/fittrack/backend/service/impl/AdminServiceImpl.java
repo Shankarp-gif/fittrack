@@ -1,13 +1,23 @@
 package com.fittrack.backend.service.impl;
 
 import com.fittrack.backend.dto.AdminDashboardDTO;
+import com.fittrack.backend.dto.HierarchyAuditDTO;
 import com.fittrack.backend.entity.AuditLog;
+import com.fittrack.backend.entity.Organization;
+import com.fittrack.backend.entity.User;
+import com.fittrack.backend.entity.enums.RoleName;
 import com.fittrack.backend.entity.enums.MemberStatus;
 import com.fittrack.backend.repository.AuditLogRepository;
 import com.fittrack.backend.repository.MemberRepository;
+import com.fittrack.backend.repository.OrganizationRepository;
+import com.fittrack.backend.repository.UserRepository;
 import com.fittrack.backend.service.AdminService;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +33,8 @@ public class AdminServiceImpl implements AdminService {
 
     private final MemberRepository memberRepository;
     private final AuditLogRepository auditLogRepository;
+    private final UserRepository userRepository;
+    private final OrganizationRepository organizationRepository;
 
     @Override
     public AdminDashboardDTO.StatsDTO getOrganizationStats(Long organizationId) {
@@ -77,6 +89,190 @@ public class AdminServiceImpl implements AdminService {
                 .type(mapActionToType(log.getAction()))
                 .build())
             .collect(Collectors.toList());
+    }
+
+    @Override
+    public HierarchyAuditDTO.SnapshotDTO getHierarchyAudit(String requesterRole, Long organizationId) {
+        boolean superAdminScope = RoleName.SUPER_ADMIN.name().equalsIgnoreCase(requesterRole);
+
+        List<User> scopedUsers = userRepository.findAll()
+            .stream()
+            .filter(user -> superAdminScope || belongsToOrganization(user, organizationId))
+            .sorted(Comparator.comparing(User::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
+            .toList();
+
+        Map<Long, User> userById = scopedUsers.stream()
+            .collect(Collectors.toMap(User::getId, user -> user, (left, right) -> left, HashMap::new));
+
+        List<HierarchyAuditDTO.IssueDTO> issues = new ArrayList<>();
+        long usersWithoutOrganization = 0;
+        long usersWithoutBranch = 0;
+        long usersWithBranchMismatch = 0;
+        long usersWithoutSupervisor = 0;
+        long usersWithInvalidSupervisor = 0;
+        long usersWithInactiveSupervisor = 0;
+        long usersWithHierarchyCycle = 0;
+
+        for (User user : scopedUsers) {
+            if (user.getRole() == null) {
+                continue;
+            }
+
+            RoleName roleName = user.getRole().getName();
+            boolean requiresOrganization = roleName != RoleName.SUPER_ADMIN;
+            boolean requiresSupervisor = roleName != RoleName.SUPER_ADMIN;
+
+            if (requiresOrganization && user.getOrganization() == null) {
+                usersWithoutOrganization++;
+                issues.add(issue(user, "MISSING_ORGANIZATION", "critical",
+                    "User is not assigned to an organization.",
+                    "Assign the user to the correct organization from user management."));
+            }
+
+            if (requiresOrganization && user.getBranch() == null) {
+                usersWithoutBranch++;
+                issues.add(issue(user, "MISSING_BRANCH", "warning",
+                    "User is not assigned to a branch.",
+                    "Assign or auto-create a branch for the user's organization."));
+            }
+
+            if (user.getOrganization() != null && user.getBranch() != null
+                && user.getBranch().getOrganization() != null
+                && !user.getOrganization().getId().equals(user.getBranch().getOrganization().getId())) {
+                usersWithBranchMismatch++;
+                issues.add(issue(user, "BRANCH_ORG_MISMATCH", "critical",
+                    "User branch belongs to a different organization.",
+                    "Move the user to a branch inside the same organization."));
+            }
+
+            User supervisor = user.getSupervisor();
+            if (requiresSupervisor && supervisor == null) {
+                usersWithoutSupervisor++;
+                issues.add(issue(user, "MISSING_SUPERVISOR", "warning",
+                    "User has no supervisor assigned.",
+                    "Assign a supervisor using the hierarchy management page."));
+                continue;
+            }
+
+            if (supervisor == null) {
+                continue;
+            }
+
+            if (!supervisor.isActive()) {
+                usersWithInactiveSupervisor++;
+                issues.add(issue(user, "INACTIVE_SUPERVISOR", "warning",
+                    "Assigned supervisor is inactive.",
+                    "Reassign the user to an active supervisor."));
+            }
+
+            if (!isSupervisorAllowed(roleName, supervisor.getRole() != null ? supervisor.getRole().getName() : null)) {
+                usersWithInvalidSupervisor++;
+                issues.add(issue(user, "INVALID_SUPERVISOR_ROLE", "critical",
+                    "Supervisor role is not allowed for this user role.",
+                    "Choose a supervisor with a valid hierarchy level."));
+            }
+
+            if (supervisor.getRole() != null && supervisor.getRole().getName() != RoleName.SUPER_ADMIN) {
+                if (user.getOrganization() == null || supervisor.getOrganization() == null
+                    || !user.getOrganization().getId().equals(supervisor.getOrganization().getId())) {
+                    usersWithInvalidSupervisor++;
+                    issues.add(issue(user, "SUPERVISOR_ORG_MISMATCH", "critical",
+                        "Supervisor belongs to a different organization.",
+                        "Assign a supervisor from the same organization or use a super admin."));
+                }
+            }
+
+            if (hasHierarchyCycle(user, userById)) {
+                usersWithHierarchyCycle++;
+                issues.add(issue(user, "HIERARCHY_CYCLE", "critical",
+                    "User is part of a circular supervisor chain.",
+                    "Remove or reassign supervisors to break the cycle."));
+            }
+        }
+
+        Organization organization = organizationId != null
+            ? organizationRepository.findById(organizationId).orElse(null)
+            : null;
+
+        HierarchyAuditDTO.SummaryDTO summary = HierarchyAuditDTO.SummaryDTO.builder()
+            .generatedAt(Instant.now())
+            .scope(superAdminScope ? "GLOBAL" : "ORGANIZATION")
+            .organizationId(organization != null ? organization.getId() : null)
+            .organizationName(organization != null ? organization.getName() : null)
+            .totalOrganizations(superAdminScope ? organizationRepository.count() : (organization != null ? 1 : 0))
+            .totalUsers(scopedUsers.size())
+            .usersWithoutOrganization(usersWithoutOrganization)
+            .usersWithoutBranch(usersWithoutBranch)
+            .usersWithBranchMismatch(usersWithBranchMismatch)
+            .usersWithoutSupervisor(usersWithoutSupervisor)
+            .usersWithInvalidSupervisor(usersWithInvalidSupervisor)
+            .usersWithInactiveSupervisor(usersWithInactiveSupervisor)
+            .usersWithHierarchyCycle(usersWithHierarchyCycle)
+            .build();
+
+        return HierarchyAuditDTO.SnapshotDTO.builder()
+            .summary(summary)
+            .issues(issues)
+            .build();
+    }
+
+    private boolean belongsToOrganization(User user, Long organizationId) {
+        return organizationId != null
+            && user.getOrganization() != null
+            && organizationId.equals(user.getOrganization().getId());
+    }
+
+    private HierarchyAuditDTO.IssueDTO issue(User user, String code, String severity, String message, String action) {
+        return HierarchyAuditDTO.IssueDTO.builder()
+            .userId(user.getId())
+            .fullName(user.getFullName())
+            .email(user.getEmail())
+            .role(user.getRole() != null ? user.getRole().getName() : null)
+            .active(user.isActive())
+            .organizationId(user.getOrganization() != null ? user.getOrganization().getId() : null)
+            .organizationName(user.getOrganization() != null ? user.getOrganization().getName() : null)
+            .branchId(user.getBranch() != null ? user.getBranch().getId() : null)
+            .branchName(user.getBranch() != null ? user.getBranch().getName() : null)
+            .supervisorId(user.getSupervisor() != null ? user.getSupervisor().getId() : null)
+            .supervisorName(user.getSupervisor() != null ? user.getSupervisor().getFullName() : null)
+            .issueCode(code)
+            .severity(severity)
+            .message(message)
+            .recommendedAction(action)
+            .build();
+    }
+
+    private boolean isSupervisorAllowed(RoleName targetRole, RoleName supervisorRole) {
+        if (targetRole == null || supervisorRole == null) {
+            return false;
+        }
+
+        return switch (targetRole) {
+            case SUPER_ADMIN -> false;
+            case ADMIN -> supervisorRole == RoleName.SUPER_ADMIN;
+            case TRAINER, GYM_MAINTENANCE_MANAGER -> supervisorRole == RoleName.SUPER_ADMIN || supervisorRole == RoleName.ADMIN;
+            case USER -> supervisorRole == RoleName.SUPER_ADMIN
+                || supervisorRole == RoleName.ADMIN
+                || supervisorRole == RoleName.TRAINER
+                || supervisorRole == RoleName.GYM_MAINTENANCE_MANAGER;
+        };
+    }
+
+    private boolean hasHierarchyCycle(User user, Map<Long, User> scopedUsersById) {
+        Map<Long, Boolean> seen = new HashMap<>();
+        User current = user;
+        while (current != null && current.getSupervisor() != null) {
+            if (seen.put(current.getId(), Boolean.TRUE) != null) {
+                return true;
+            }
+
+            User next = scopedUsersById.get(current.getSupervisor().getId());
+            if (next == null) {
+                next = current.getSupervisor();
+            }
+            current = next;
+        }
+        return false;
     }
 
     /**
